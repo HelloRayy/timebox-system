@@ -242,16 +242,37 @@ export default function App() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // Redesigned Priority Indicator: Minimal Dot + Clean Label (Tanpa badge kotak tebal)
   const renderPriorityBadge = (p: Priority) => {
     switch (p) {
       case "urgent":
-        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-red-500/10 text-red-400 border border-red-500/20">Urgent</span>;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-red-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            Urgent
+          </span>
+        );
       case "high":
-        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-orange-500/10 text-orange-400 border border-orange-500/20">High</span>;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-orange-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+            High
+          </span>
+        );
       case "medium":
-        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-amber-500/10 text-amber-400 border border-amber-500/20">Med</span>;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-amber-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            Med
+          </span>
+        );
       case "low":
-        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Low</span>;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-indigo-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+            Low
+          </span>
+        );
       default:
         return null;
     }
@@ -289,7 +310,7 @@ export default function App() {
           {activeTask && (
             <div className="flex items-center gap-2 bg-[#1C1D1F] border border-white/[0.08] px-2.5 py-1 rounded-[4px] text-xs">
               <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-[#6B7280]"}`} />
-              <span className="font-mono font-medium text-[#F0F0F0] text-[12px]">{formatTimer(secondsRemaining)}</span>
+              <span className="font-sans font-medium text-[#F0F0F0] text-[12px] tabular-nums tracking-wide">{formatTimer(secondsRemaining)}</span>
               <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">{activeTask.title}</span>
               <button
                 onClick={toggleTimer}
@@ -566,7 +587,7 @@ export default function App() {
                       <select
                         value={customStartTime}
                         onChange={(e) => setCustomStartTime(e.target.value)}
-                        className="w-full bg-[#161719] border border-white/[0.08] text-[#F0F0F0] font-mono text-12 rounded-[4px] px-2.5 py-1.5 focus:border-[#3F76FF] focus:outline-none transition cursor-pointer"
+                        className="w-full bg-[#161719] border border-white/[0.08] text-[#F0F0F0] font-sans text-12 rounded-[4px] px-2.5 py-1.5 focus:border-[#3F76FF] focus:outline-none transition cursor-pointer"
                       >
                         {TIME_OPTIONS.map((time) => (
                           <option key={time} value={time} className="bg-[#1C1D1F] text-white">
@@ -579,7 +600,7 @@ export default function App() {
                     {/* End Time Display (Calculated) */}
                     <div>
                       <label className="block text-[11px] text-[#6B7280] font-sans mb-1">Selesai (End Time)</label>
-                      <div className="w-full bg-[#161719] border border-white/[0.08] text-emerald-400 font-mono text-12 rounded-[4px] px-2.5 py-1.5 select-none flex items-center justify-between">
+                      <div className="w-full bg-[#161719] border border-white/[0.08] text-emerald-400 font-sans text-12 rounded-[4px] px-2.5 py-1.5 select-none flex items-center justify-between">
                         <span>{calculatedEndTime}</span>
                         <span className="text-[10px] text-[#6B7280] font-sans">Otomatis</span>
                       </div>
