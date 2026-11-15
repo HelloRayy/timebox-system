@@ -15,7 +15,6 @@ import {
   GripVertical,
   Sliders,
   CalendarCheck2,
-  Plus
 } from "lucide-react";
 import "./App.css";
 
@@ -266,9 +265,9 @@ export default function App() {
       </header>
 
       {/* 2. Main 3-Column Working Board */}
-      <main className="flex-1 flex pt-10 w-full h-full overflow-hidden">
+      <main className="flex-1 flex pt-10 pb-20 w-full h-full overflow-hidden">
         
-        {/* KOLOM 1: Brain Dump (Staging Pool + Inline Quick Add) */}
+        {/* KOLOM 1: Brain Dump (Staging Pool) */}
         <section className="w-80 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -320,32 +319,6 @@ export default function App() {
                 </div>
               ))
             )}
-          </div>
-
-          {/* INLINE QUICK ADD (Sesuai design.md, menyatu di bawah kolom Brain Dump) */}
-          <div className="p-2.5 border-t border-white/[0.08] bg-[#161719]">
-            <form onSubmit={handleInputSubmit} className="flex flex-col gap-1.5">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Tulis tugas baru... /30m @urgent"
-                  className="w-full rounded-[4px] border border-white/[0.08] bg-[#1C1D1F] px-2.5 py-1.5 pr-8 text-12 text-[#F0F0F0] placeholder:text-[#525866] focus:border-[#3F76FF] focus:outline-none transition-colors font-sans"
-                />
-                <button
-                  type="submit"
-                  disabled={!inputValue.trim()}
-                  className="absolute right-1.5 w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="flex items-center justify-between px-0.5 text-[10px] text-[#6B7280] font-sans">
-                <span>Enter = Simpan</span>
-                <span className="text-[#9EA3AE]">/45m @urgent</span>
-              </div>
-            </form>
           </div>
         </section>
 
@@ -597,8 +570,47 @@ export default function App() {
         </section>
 
       </main>
+ 
+      {/* 3. Floating Input Bar (Center-Bottom Sesuai Permintaan User) */}
+      <div className="fixed bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-full max-w-lg px-4">
+        <form
+          onSubmit={handleInputSubmit}
+          className="bg-[#1C1D1F] border border-white/[0.12] rounded-[8px] shadow-2xl p-2 flex flex-col gap-1.5 backdrop-blur-md focus-within:border-[#3F76FF] transition-all"
+        >
+          <div className="flex items-center gap-2 px-1">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Tulis tugas baru... ketik /30m untuk durasi atau @urgent untuk prioritas"
+              className="flex-1 bg-transparent border-none text-12 text-[#F0F0F0] placeholder:text-[#525866] focus:outline-none font-sans"
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="w-6 h-6 rounded-[4px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-      {/* 3. Hard Stop Evaluation Modal (Saat Timer Habis) */}
+          <div className="flex items-center justify-between pt-1 border-t border-white/[0.04] px-1 text-10 text-[#6B7280] font-sans">
+            <div className="flex items-center gap-1.5">
+              <span className="font-sans text-[10px] bg-white/[0.06] px-1.5 py-0.2 rounded text-[#9EA3AE]">
+                Enter
+              </span>
+              <span>masuk Brain Dump</span>
+            </div>
+            <div className="flex items-center gap-2 font-sans text-[10px]">
+              <span className="text-[#9EA3AE]">/25m /45m</span>
+              <span className="text-red-400">@urgent</span>
+              <span className="text-amber-400">@high</span>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* 4. Hard Stop Evaluation Modal (Saat Timer Habis) */}
       {hardStopDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1C1D1F] border border-white/[0.12] w-full max-w-md rounded-[8px] p-5 shadow-2xl">
