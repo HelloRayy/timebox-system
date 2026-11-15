@@ -13,8 +13,8 @@ import {
   Flame,
   X,
   GripVertical,
-  Sliders,
   CalendarCheck2,
+  Check
 } from "lucide-react";
 import "./App.css";
 
@@ -27,14 +27,25 @@ export interface TaskItem {
   priority: Priority;
   completed: boolean;
   scheduledTime?: string; // e.g. "09:00"
+  scheduledEndTime?: string; // e.g. "10:00"
 }
 
-const HOURS = [
+// 24 Hour Slots
+const TIME_OPTIONS = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
   "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30", "18:00", "18:30"
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
 ];
+
+// Helper kalkulasi end time berdasarkan durasi menit
+const calculateEndTime = (start: string, durationMin: number) => {
+  const [h, m] = start.split(":").map(Number);
+  const totalMin = h * 60 + m + durationMin;
+  const endH = Math.floor(totalMin / 60) % 24;
+  const endM = totalMin % 60;
+  return `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
+};
 
 export default function App() {
   // 1. Brain Dump list
@@ -46,19 +57,26 @@ export default function App() {
 
   // 2. Top 3 Priorities
   const [top3, setTop3] = useState<TaskItem[]>([
-    { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00" },
+    { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00", scheduledEndTime: "10:00" },
     { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: false },
   ]);
 
   // Selected card di Top 3 untuk scheduling
   const [selectedTop3Id, setSelectedTop3Id] = useState<string | null>("t3-2");
 
+  // Date selection state (Interactive mini calendar ala referensi)
+  const [selectedDate, setSelectedDate] = useState<number>(15);
+
+  // Time Range Picker State untuk kartu yang dipilih
+  const [customStartTime, setCustomStartTime] = useState<string>("10:00");
+  const [customDuration, setCustomDuration] = useState<number>(30);
+
   // Dragging State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
 
-  // Inline Input State (di dalam Brain Dump sesuai design.md)
+  // Floating Input State
   const [inputValue, setInputValue] = useState("");
   const inputDuration = 30;
   const inputPriority: Priority = "medium";
@@ -68,6 +86,17 @@ export default function App() {
   const [secondsRemaining, setSecondsRemaining] = useState<number>(60 * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [hardStopDialog, setHardStopDialog] = useState<TaskItem | null>(null);
+
+  // Sync state picker saat card selected berganti
+  useEffect(() => {
+    const task = top3.find((t) => t.id === selectedTop3Id);
+    if (task) {
+      if (task.scheduledTime) {
+        setCustomStartTime(task.scheduledTime);
+      }
+      setCustomDuration(task.durationMinutes);
+    }
+  }, [selectedTop3Id, top3]);
 
   // Timer Interval Loop
   useEffect(() => {
@@ -87,7 +116,7 @@ export default function App() {
     };
   }, [isRunning, secondsRemaining, activeTask]);
 
-  // Submit from Inline Input Bar
+  // Submit from Floating Input Bar (Center-Bottom)
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -140,7 +169,7 @@ export default function App() {
 
   const demoteToBrainDump = (task: TaskItem) => {
     setTop3((prev) => prev.filter((t) => t.id !== task.id));
-    setBrainDump((prev) => [{ ...task, scheduledTime: undefined }, ...prev]);
+    setBrainDump((prev) => [{ ...task, scheduledTime: undefined, scheduledEndTime: undefined }, ...prev]);
     if (selectedTop3Id === task.id) {
       setSelectedTop3Id(null);
     }
@@ -164,15 +193,25 @@ export default function App() {
     setDragSource(null);
   };
 
-  const assignSchedule = (taskId: string, time: string) => {
+  // Simpan Time Range ke kartu terpilih
+  const applyTimeRange = (startTime: string, duration: number) => {
+    if (!selectedTop3Id) return;
+    const endTime = calculateEndTime(startTime, duration);
+
     setTop3((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: time } : t))
+      prev.map((t) =>
+        t.id === selectedTop3Id
+          ? { ...t, scheduledTime: startTime, scheduledEndTime: endTime, durationMinutes: duration }
+          : t
+      )
     );
   };
 
   const unassignSchedule = (taskId: string) => {
     setTop3((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: undefined } : t))
+      prev.map((t) =>
+        t.id === taskId ? { ...t, scheduledTime: undefined, scheduledEndTime: undefined } : t
+      )
     );
   };
 
@@ -203,7 +242,6 @@ export default function App() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Badge Prioritas Halus Sesuai Dokumen Desain
   const renderPriorityBadge = (p: Priority) => {
     switch (p) {
       case "urgent":
@@ -220,6 +258,17 @@ export default function App() {
   };
 
   const selectedTask = top3.find((t) => t.id === selectedTop3Id);
+  const calculatedEndTime = calculateEndTime(customStartTime, customDuration);
+
+  // Mini calendar grid numbers (November 2026)
+  const calendarDays = [
+    { day: 26, isOtherMonth: true }, { day: 27, isOtherMonth: true }, { day: 28, isOtherMonth: true }, { day: 29, isOtherMonth: true }, { day: 30, isOtherMonth: true }, { day: 31, isOtherMonth: true }, { day: 1 },
+    { day: 2 }, { day: 3 }, { day: 4 }, { day: 5 }, { day: 6 }, { day: 7 }, { day: 8 },
+    { day: 9 }, { day: 10 }, { day: 11 }, { day: 12 }, { day: 13 }, { day: 14 }, { day: 15 },
+    { day: 16 }, { day: 17 }, { day: 18 }, { day: 19 }, { day: 20 }, { day: 21 }, { day: 22 },
+    { day: 23 }, { day: 24 }, { day: 25 }, { day: 26 }, { day: 27 }, { day: 28 }, { day: 29 },
+    { day: 30 }, { day: 1, isOtherMonth: true }, { day: 2, isOtherMonth: true }, { day: 3, isOtherMonth: true }, { day: 4, isOtherMonth: true }, { day: 5, isOtherMonth: true }, { day: 6, isOtherMonth: true }
+  ];
 
   return (
     <div className="flex h-screen w-screen bg-[#131415] text-[#F0F0F0] text-[13px] antialiased select-none overflow-hidden relative font-sans">
@@ -268,7 +317,7 @@ export default function App() {
       <main className="flex-1 flex pt-10 pb-20 w-full h-full overflow-hidden">
         
         {/* KOLOM 1: Brain Dump (Staging Pool) */}
-        <section className="w-80 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
+        <section className="w-76 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-[#9EA3AE]" />
@@ -284,7 +333,7 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
             {brainDump.length === 0 ? (
               <div className="p-6 text-center text-12 text-[#6B7280] font-sans">
-                Isi kepala kosong. Tulis tugas baru di input bawah.
+                Isi kepala kosong. Ketik tugas di bar bawah lalu tekan Enter.
               </div>
             ) : (
               brainDump.map((task) => (
@@ -330,7 +379,7 @@ export default function App() {
           }}
           onDragLeave={() => setIsDragOverTop3(false)}
           onDrop={handleDropOnTop3}
-          className={`w-88 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-colors ${
+          className={`w-80 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-colors ${
             isDragOverTop3 ? "bg-[#1E2333]/30 border-l border-l-[#3F76FF]" : ""
           }`}
         >
@@ -381,7 +430,7 @@ export default function App() {
                             </span>
                             {isSelected && (
                               <span className="text-[10px] font-sans text-[#3F76FF] bg-[#3F76FF]/10 px-1.5 py-0.2 rounded-[3px] border border-[#3F76FF]/25">
-                                Aktif di Time Grid
+                                Aktif Mengatur Waktu
                               </span>
                             )}
                           </div>
@@ -408,11 +457,11 @@ export default function App() {
                           {task.scheduledTime ? (
                             <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-[3px] flex items-center gap-1 text-[11px]">
                               <CalendarCheck2 className="w-3 h-3" />
-                              {task.scheduledTime}
+                              {task.scheduledTime} - {task.scheduledEndTime || calculateEndTime(task.scheduledTime, task.durationMinutes)}
                             </span>
                           ) : (
                             <span className="text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-[3px] text-[10px]">
-                              Pilih Jam
+                              Pilih Range Jam
                             </span>
                           )}
                         </div>
@@ -465,105 +514,154 @@ export default function App() {
           </div>
         </section>
 
-        {/* KOLOM 3: Daily Time-Grid */}
+        {/* KOLOM 3: Time Range Picker & Calendar Scheduler (Mengadopsi UI Referensi User) */}
         <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-[#9EA3AE]" />
-              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Daily Time Grid</span>
-              {selectedTask ? (
+              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Time Range & Date Scheduler</span>
+              {selectedTask && (
                 <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08]">
                   <span className="text-[#6B7280]">Target:</span>
-                  <span className="text-[#3F76FF] font-medium truncate max-w-[200px]">
+                  <span className="text-[#3F76FF] font-medium truncate max-w-[180px]">
                     {selectedTask.title}
                   </span>
-                  <span className="text-11 font-sans text-[#9EA3AE]">({selectedTask.durationMinutes}m)</span>
                 </div>
-              ) : (
-                <span className="text-11 text-[#6B7280] font-sans">Pilih kartu di Top 3 untuk mengatur jam</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-11 text-[#6B7280] font-sans">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3F76FF]" /> Terjadwal</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-white/[0.1]" /> Slot Bebas</span>
-            </div>
+            {selectedTask?.scheduledTime && (
+              <button
+                onClick={() => unassignSchedule(selectedTask.id)}
+                className="text-11 text-red-400 hover:text-red-300 font-sans cursor-pointer transition flex items-center gap-1"
+              >
+                <X className="w-3 h-3" /> Lepas Jadwal
+              </button>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             {!selectedTask ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
-                <Sliders className="w-7 h-7 mb-2 text-[#525866]" />
+                <Clock className="w-8 h-8 mb-3 text-[#525866]" />
                 <div className="text-13 font-medium text-[#F0F0F0] font-sans">Pilih Kartu di Kolom Top 3</div>
                 <p className="text-11 text-[#9EA3AE] mt-1 font-sans">
-                  Klik salah satu kartu prioritas untuk mengalokasikan jam mulai ke jadwal Time Grid.
+                  Klik salah satu kartu prioritas untuk mengatur tanggal dan rentang jam mulai-selesai timebox.
                 </p>
               </div>
             ) : (
-              <div className="max-w-2xl mx-auto space-y-0.5">
-                {HOURS.map((hour) => {
-                  const scheduledTask = top3.find((t) => t.scheduledTime === hour);
-                  const isCurrentActive = activeTask && activeTask.scheduledTime === hour && isRunning;
-                  const isSelectedTaskHere = selectedTask.scheduledTime === hour;
+              <div className="max-w-xl mx-auto space-y-6">
+                
+                {/* 1. Time Range Box (Start Time -> End Time) */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 text-12 font-sans">
+                    <span className="font-medium text-[#F0F0F0]">Rentang Jam Timebox (Start & End Time)</span>
+                    <span className="text-11 text-[#9EA3AE]">Durasi: {customDuration} Menit</span>
+                  </div>
 
-                  return (
-                    <div
-                      key={hour}
-                      className={`relative h-11 border-b border-white/[0.04] flex items-center hover:bg-white/[0.015] transition-colors rounded-[4px] px-2.5 ${
-                        isSelectedTaskHere ? "bg-[#3F76FF]/[0.06]" : ""
-                      }`}
-                    >
-                      {/* Hour Label (Satu-satunya tempat font-mono) */}
-                      <div className="w-14 text-right pr-3 font-mono text-10 text-[#6B7280] select-none">
-                        {hour}
-                      </div>
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    {/* Start Time Select */}
+                    <div>
+                      <label className="block text-[11px] text-[#6B7280] font-sans mb-1">Mulai (Start Time)</label>
+                      <select
+                        value={customStartTime}
+                        onChange={(e) => setCustomStartTime(e.target.value)}
+                        className="w-full bg-[#161719] border border-white/[0.08] text-[#F0F0F0] font-mono text-12 rounded-[4px] px-2.5 py-1.5 focus:border-[#3F76FF] focus:outline-none transition cursor-pointer"
+                      >
+                        {TIME_OPTIONS.map((time) => (
+                          <option key={time} value={time} className="bg-[#1C1D1F] text-white">
+                            {time}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                      {/* Time Slot Body */}
-                      <div className="flex-1 pl-3">
-                        {scheduledTask ? (
-                          <div
-                            className={`rounded-[5px] border px-3 py-1.5 flex items-center justify-between transition-all ${
-                              isCurrentActive
-                                ? "border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] border-white/[0.1] text-white ring-1 ring-[#3F76FF]/20"
-                                : scheduledTask.id === selectedTask.id
-                                ? "border-l-2 border-l-[#3F76FF] bg-[#1E2023] border-white/[0.12] text-white"
-                                : "border border-white/[0.08] bg-[#1C1D1F] text-[#F0F0F0]"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#3F76FF]" />
-                              <span className="text-12 font-sans font-medium">{scheduledTask.title}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-11 text-[#9EA3AE] font-sans">
-                              <span>{scheduledTask.durationMinutes}m</span>
-                              {scheduledTask.id === selectedTask.id && (
-                                <button
-                                  onClick={() => unassignSchedule(scheduledTask.id)}
-                                  title="Lepas jam"
-                                  className="text-[#6B7280] hover:text-red-400 transition cursor-pointer p-0.5"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between text-[#6B7280] text-xs">
-                            <span className="text-10 font-sans opacity-0 group-hover:opacity-40 transition">
-                              Slot Kosong
-                            </span>
-                            <button
-                              onClick={() => assignSchedule(selectedTask.id, hour)}
-                              className="opacity-0 hover:opacity-100 group-hover:opacity-100 transition flex items-center gap-1 text-11 font-medium font-sans bg-[#3F76FF] hover:bg-[#3364DB] text-white px-2.5 py-0.5 rounded-[4px] cursor-pointer"
-                            >
-                              Jadwalkan jam {hour}
-                            </button>
-                          </div>
-                        )}
+                    {/* End Time Display (Calculated) */}
+                    <div>
+                      <label className="block text-[11px] text-[#6B7280] font-sans mb-1">Selesai (End Time)</label>
+                      <div className="w-full bg-[#161719] border border-white/[0.08] text-emerald-400 font-mono text-12 rounded-[4px] px-2.5 py-1.5 select-none flex items-center justify-between">
+                        <span>{calculatedEndTime}</span>
+                        <span className="text-[10px] text-[#6B7280] font-sans">Otomatis</span>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* Preset Durasi Cepat */}
+                  <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04]">
+                    <span className="text-[11px] text-[#6B7280] font-sans mr-1">Preset Durasi:</span>
+                    {[15, 25, 30, 45, 60, 90].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => setCustomDuration(mins)}
+                        className={`px-2 py-0.5 rounded-[3px] text-11 font-sans transition cursor-pointer ${
+                          customDuration === mins
+                            ? "bg-[#3F76FF] text-white font-medium"
+                            : "bg-white/[0.04] text-[#9EA3AE] hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {mins}m
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => applyTimeRange(customStartTime, customDuration)}
+                    className="w-full mt-3.5 py-2 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-12 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Kunci Jadwal {customStartTime} - {calculatedEndTime}
+                  </button>
+                </div>
+
+                {/* 2. Mini Calendar UI (Mengikuti Layout Desain Gambar Referensi User) */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 text-12 font-sans">
+                    <span className="font-medium text-[#F0F0F0]">Pilih Tanggal Timebox</span>
+                    <span className="text-11 text-[#9EA3AE]">November 2026</span>
+                  </div>
+
+                  {/* Day Headers (Mo, Tu, We, Th, Fr, Sa, Su) */}
+                  <div className="grid grid-cols-7 gap-1 text-center text-11 text-[#6B7280] font-sans mb-1.5">
+                    <span>Mo</span>
+                    <span>Tu</span>
+                    <span>We</span>
+                    <span>Th</span>
+                    <span>Fr</span>
+                    <span>Sa</span>
+                    <span>Su</span>
+                  </div>
+
+                  {/* Calendar Days Matrix */}
+                  <div className="grid grid-cols-7 gap-1 text-center text-12 font-sans">
+                    {calendarDays.map((item, idx) => {
+                      const isSelected = selectedDate === item.day && !item.isOtherMonth;
+                      const isToday = item.day === 15 && !item.isOtherMonth;
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (!item.isOtherMonth) {
+                              setSelectedDate(item.day);
+                            }
+                          }}
+                          className={`h-8 rounded-[4px] flex items-center justify-center transition cursor-pointer ${
+                            item.isOtherMonth
+                              ? "text-white/20 hover:bg-transparent cursor-default"
+                              : isSelected
+                              ? "bg-[#3F76FF] text-white font-semibold shadow-sm"
+                              : isToday
+                              ? "bg-white/[0.08] text-[#F0F0F0] font-medium border border-[#3F76FF]/40"
+                              : "text-[#9EA3AE] hover:bg-white/[0.04] hover:text-[#F0F0F0]"
+                          }`}
+                        >
+                          {item.day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
