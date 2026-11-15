@@ -573,76 +573,15 @@ export default function App() {
             ) : (
               <div className="max-w-xl mx-auto space-y-6">
                 
-                {/* 1. Time Range Box (Start Time -> End Time) */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3 text-12 font-sans">
-                    <span className="font-medium text-[#F0F0F0]">Rentang Jam Timebox (Start & End Time)</span>
-                    <span className="text-11 text-[#9EA3AE]">Durasi: {customDuration} Menit</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    {/* Start Time Select */}
-                    <div>
-                      <label className="block text-[11px] text-[#6B7280] font-sans mb-1">Mulai (Start Time)</label>
-                      <select
-                        value={customStartTime}
-                        onChange={(e) => setCustomStartTime(e.target.value)}
-                        className="w-full bg-[#161719] border border-white/[0.08] text-[#F0F0F0] font-sans text-12 rounded-[4px] px-2.5 py-1.5 focus:border-[#3F76FF] focus:outline-none transition cursor-pointer"
-                      >
-                        {TIME_OPTIONS.map((time) => (
-                          <option key={time} value={time} className="bg-[#1C1D1F] text-white">
-                            {time}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* End Time Display (Calculated) */}
-                    <div>
-                      <label className="block text-[11px] text-[#6B7280] font-sans mb-1">Selesai (End Time)</label>
-                      <div className="w-full bg-[#161719] border border-white/[0.08] text-emerald-400 font-sans text-12 rounded-[4px] px-2.5 py-1.5 select-none flex items-center justify-between">
-                        <span>{calculatedEndTime}</span>
-                        <span className="text-[10px] text-[#6B7280] font-sans">Otomatis</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Preset Durasi Cepat */}
-                  <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04]">
-                    <span className="text-[11px] text-[#6B7280] font-sans mr-1">Preset Durasi:</span>
-                    {[15, 25, 30, 45, 60, 90].map((mins) => (
-                      <button
-                        key={mins}
-                        onClick={() => setCustomDuration(mins)}
-                        className={`px-2 py-0.5 rounded-[3px] text-11 font-sans transition cursor-pointer ${
-                          customDuration === mins
-                            ? "bg-[#3F76FF] text-white font-medium"
-                            : "bg-white/[0.04] text-[#9EA3AE] hover:bg-white/[0.08]"
-                        }`}
-                      >
-                        {mins}m
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => applyTimeRange(customStartTime, customDuration)}
-                    className="w-full mt-3.5 py-2 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-12 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    Kunci Jadwal {customStartTime} - {calculatedEndTime}
-                  </button>
-                </div>
-
-                {/* 2. Mini Calendar UI (Mengikuti Layout Desain Gambar Referensi User) */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3 text-12 font-sans">
-                    <span className="font-medium text-[#F0F0F0]">Pilih Tanggal Timebox</span>
-                    <span className="text-11 text-[#9EA3AE]">November 2026</span>
+                {/* 1. Compact Mini Calendar (Kalender Kecil di Atas) */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-2 text-11 font-sans">
+                    <span className="font-medium text-[#F0F0F0]">Pilih Tanggal</span>
+                    <span className="text-[#9EA3AE]">November 2026</span>
                   </div>
 
                   {/* Day Headers (Mo, Tu, We, Th, Fr, Sa, Su) */}
-                  <div className="grid grid-cols-7 gap-1 text-center text-11 text-[#6B7280] font-sans mb-1.5">
+                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-[#6B7280] font-sans mb-1">
                     <span>Mo</span>
                     <span>Tu</span>
                     <span>We</span>
@@ -652,27 +591,21 @@ export default function App() {
                     <span>Su</span>
                   </div>
 
-                  {/* Calendar Days Matrix */}
-                  <div className="grid grid-cols-7 gap-1 text-center text-12 font-sans">
-                    {calendarDays.map((item, idx) => {
-                      const isSelected = selectedDate === item.day && !item.isOtherMonth;
-                      const isToday = item.day === 15 && !item.isOtherMonth;
+                  {/* Calendar Days Matrix (Compact) */}
+                  <div className="grid grid-cols-7 gap-1 text-center text-11 font-sans">
+                    {calendarDays.slice(7, 28).map((item, idx) => {
+                      const isSelected = selectedDate === item.day;
+                      const isToday = item.day === 15;
 
                       return (
                         <button
                           key={idx}
-                          onClick={() => {
-                            if (!item.isOtherMonth) {
-                              setSelectedDate(item.day);
-                            }
-                          }}
-                          className={`h-8 rounded-[4px] flex items-center justify-center transition cursor-pointer ${
-                            item.isOtherMonth
-                              ? "text-white/20 hover:bg-transparent cursor-default"
-                              : isSelected
-                              ? "bg-[#3F76FF] text-white font-semibold shadow-sm"
+                          onClick={() => setSelectedDate(item.day)}
+                          className={`h-6 rounded-[3px] flex items-center justify-center transition cursor-pointer text-[11px] ${
+                            isSelected
+                              ? "bg-[#3F76FF] text-white font-semibold"
                               : isToday
-                              ? "bg-white/[0.08] text-[#F0F0F0] font-medium border border-[#3F76FF]/40"
+                              ? "bg-white/[0.08] text-[#F0F0F0] border border-[#3F76FF]/40"
                               : "text-[#9EA3AE] hover:bg-white/[0.04] hover:text-[#F0F0F0]"
                           }`}
                         >
@@ -680,6 +613,79 @@ export default function App() {
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* 2. Large Time Slot Picker Grid (Area Jam Besar) */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-12 font-sans border-b border-white/[0.06] pb-2.5">
+                    <div>
+                      <span className="font-medium text-[#F0F0F0] text-13">Pilih Slot Jam Mulai</span>
+                      <div className="text-[11px] text-[#9EA3AE] mt-0.5">
+                        Rentang: <strong className="text-white font-mono">{customStartTime} - {calculatedEndTime}</strong> ({customDuration}m)
+                      </div>
+                    </div>
+
+                    {/* Preset Durasi Cepat */}
+                    <div className="flex items-center gap-1">
+                      {[15, 25, 30, 45, 60, 90].map((mins) => (
+                        <button
+                          key={mins}
+                          onClick={() => setCustomDuration(mins)}
+                          className={`px-2 py-0.5 rounded-[3px] text-11 font-sans transition cursor-pointer ${
+                            customDuration === mins
+                              ? "bg-[#3F76FF] text-white font-medium"
+                              : "bg-white/[0.04] text-[#9EA3AE] hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {mins}m
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Grid Besar Tombol Jam */}
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                    {TIME_OPTIONS.map((time) => {
+                      const isCurrentSelected = customStartTime === time;
+                      const isOccupiedByOther = top3.some(
+                        (t) => t.id !== selectedTask.id && t.scheduledTime === time
+                      );
+
+                      return (
+                        <button
+                          key={time}
+                          disabled={isOccupiedByOther}
+                          onClick={() => {
+                            setCustomStartTime(time);
+                            applyTimeRange(time, customDuration);
+                          }}
+                          className={`h-11 rounded-[6px] border flex flex-col items-center justify-center transition cursor-pointer ${
+                            isCurrentSelected
+                              ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-md ring-2 ring-[#3F76FF]/30"
+                              : isOccupiedByOther
+                              ? "bg-white/[0.02] border-white/[0.04] text-[#525866] cursor-not-allowed line-through"
+                              : "bg-[#161719] border-white/[0.08] text-[#D0D4DC] hover:border-white/[0.2] hover:bg-[#202226]"
+                          }`}
+                        >
+                          <span className="font-mono text-12 font-medium">{time}</span>
+                          <span className="text-[10px] font-sans opacity-70">
+                            {isOccupiedByOther ? "Terpakai" : isCurrentSelected ? "Aktif" : "Pilih"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-11 font-sans text-[#9EA3AE]">
+                    <span>Klik slot jam untuk langsung mengunci timebox.</span>
+                    <button
+                      onClick={() => applyTimeRange(customStartTime, customDuration)}
+                      className="px-3 py-1.5 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-11 transition cursor-pointer flex items-center gap-1 shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Terapkan {customStartTime} - {calculatedEndTime}
+                    </button>
                   </div>
                 </div>
 
