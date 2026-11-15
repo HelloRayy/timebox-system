@@ -14,7 +14,8 @@ import {
   X,
   GripVertical,
   Sliders,
-  CalendarCheck2
+  CalendarCheck2,
+  Plus
 } from "lucide-react";
 import "./App.css";
 
@@ -37,14 +38,14 @@ const HOURS = [
 ];
 
 export default function App() {
-  // 1. Brain Dump list (bank tugas mentah)
+  // 1. Brain Dump list
   const [brainDump, setBrainDump] = useState<TaskItem[]>([
     { id: "bd-1", title: "Review PR backend optimization", durationMinutes: 30, priority: "high", completed: false },
     { id: "bd-2", title: "Kirim update milestone ke klien", durationMinutes: 20, priority: "medium", completed: false },
     { id: "bd-3", title: "Tulis test case auth module", durationMinutes: 45, priority: "low", completed: false },
   ]);
 
-  // 2. Top 3 Priorities (Gate Fokus)
+  // 2. Top 3 Priorities
   const [top3, setTop3] = useState<TaskItem[]>([
     { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00" },
     { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: false },
@@ -58,7 +59,7 @@ export default function App() {
   const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
 
-  // Floating Input State
+  // Inline Input State (di dalam Brain Dump sesuai design.md)
   const [inputValue, setInputValue] = useState("");
   const inputDuration = 30;
   const inputPriority: Priority = "medium";
@@ -87,7 +88,7 @@ export default function App() {
     };
   }, [isRunning, secondsRemaining, activeTask]);
 
-  // Submit from Floating Input Bar (Center-Bottom)
+  // Submit from Inline Input Bar
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -96,14 +97,12 @@ export default function App() {
     let duration = inputDuration;
     let priority: Priority = inputPriority;
 
-    // Smart Syntax Parsing: /30m, /45m
     const durationMatch = text.match(/\/(\d+)m?/i);
     if (durationMatch) {
       duration = parseInt(durationMatch[1], 10);
       text = text.replace(durationMatch[0], "").trim();
     }
 
-    // Smart Syntax Parsing: @urgent, @high, @med, @low
     if (/@urgent/i.test(text)) {
       priority = "urgent";
       text = text.replace(/@urgent/gi, "").trim();
@@ -126,12 +125,10 @@ export default function App() {
       completed: false,
     };
 
-    // Otomatis meluncur masuk ke Brain Dump
     setBrainDump((prev) => [newTask, ...prev]);
     setInputValue("");
   };
 
-  // Move from Brain Dump -> Top 3 Gate
   const promoteToTop3 = (task: TaskItem) => {
     if (top3.length >= 3) {
       alert("Top 3 sudah penuh! Selesaikan atau turunkan 1 tugas dulu.");
@@ -142,7 +139,6 @@ export default function App() {
     setSelectedTop3Id(task.id);
   };
 
-  // Demote from Top 3 -> Brain Dump
   const demoteToBrainDump = (task: TaskItem) => {
     setTop3((prev) => prev.filter((t) => t.id !== task.id));
     setBrainDump((prev) => [{ ...task, scheduledTime: undefined }, ...prev]);
@@ -151,7 +147,6 @@ export default function App() {
     }
   };
 
-  // Drag and Drop Handlers
   const handleDragStart = (task: TaskItem, source: "braindump" | "top3") => {
     setDraggedTaskId(task.id);
     setDragSource(source);
@@ -170,21 +165,18 @@ export default function App() {
     setDragSource(null);
   };
 
-  // Assign slot time
   const assignSchedule = (taskId: string, time: string) => {
     setTop3((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: time } : t))
     );
   };
 
-  // Remove schedule from card
   const unassignSchedule = (taskId: string) => {
     setTop3((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: undefined } : t))
     );
   };
 
-  // Start Focus Box
   const startFocusBox = (task: TaskItem) => {
     setActiveTask(task);
     setSecondsRemaining(task.durationMinutes * 60);
@@ -206,24 +198,23 @@ export default function App() {
     }
   };
 
-  // Format MM:SS
   const formatTimer = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Helper Priority Badge
+  // Badge Prioritas Halus Sesuai Dokumen Desain
   const renderPriorityBadge = (p: Priority) => {
     switch (p) {
       case "urgent":
-        return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-950/70 border border-red-800 text-red-300">Urgent</span>;
+        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-red-500/10 text-red-400 border border-red-500/20">Urgent</span>;
       case "high":
-        return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950/70 border border-orange-800 text-orange-300">High</span>;
+        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-orange-500/10 text-orange-400 border border-orange-500/20">High</span>;
       case "medium":
-        return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-800 text-amber-300">Med</span>;
+        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-amber-500/10 text-amber-400 border border-amber-500/20">Med</span>;
       case "low":
-        return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950/70 border border-indigo-800 text-indigo-300">Low</span>;
+        return <span className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium font-sans bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Low</span>;
       default:
         return null;
     }
@@ -232,70 +223,69 @@ export default function App() {
   const selectedTask = top3.find((t) => t.id === selectedTop3Id);
 
   return (
-    <div className="flex h-screen w-screen bg-[#151617] text-[#F1F2F4] text-[13px] antialiased select-none overflow-hidden relative">
+    <div className="flex h-screen w-screen bg-[#131415] text-[#F0F0F0] text-[13px] antialiased select-none overflow-hidden relative font-sans">
+      
       {/* 1. Header Bar Minimalis Khas Plane */}
-      <header className="absolute top-0 left-0 right-0 h-11 border-b border-[#242528] bg-[#151617]/90 backdrop-blur z-20 flex items-center justify-between px-4">
+      <header className="absolute top-0 left-0 right-0 h-10 border-b border-white/[0.08] bg-[#131415] z-20 flex items-center justify-between px-3.5">
         <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 font-medium text-neutral-300">
-            <span className="w-2 h-2 rounded-full bg-[#3E63DD]" />
+          <div className="flex items-center gap-1.5 font-medium text-[#F0F0F0]">
+            <span className="w-2 h-2 rounded-full bg-[#3F76FF]" />
             raditya-rayhan
           </div>
-          <ChevronRight className="w-3.5 h-3.5 text-neutral-600" />
-          <span className="text-neutral-400">Timebox Daily</span>
-          <span className="text-[10px] font-mono bg-[#1E1F21] border border-[#2E3035] text-neutral-400 px-1.5 py-0.5 rounded">
-            Interactive Flow
-          </span>
+          <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
+          <span className="text-[#9EA3AE]">Timebox Daily</span>
         </div>
 
         {/* Mini Active Timer status di Header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {activeTask && (
-            <div className="flex items-center gap-2 bg-[#1E1F21] border border-[#2E3035] px-2.5 py-1 rounded text-xs">
-              <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-neutral-500"}`} />
-              <span className="font-mono font-medium text-white">{formatTimer(secondsRemaining)}</span>
-              <span className="text-neutral-400 truncate max-w-[150px]">{activeTask.title}</span>
+            <div className="flex items-center gap-2 bg-[#1C1D1F] border border-white/[0.08] px-2.5 py-1 rounded-[4px] text-xs">
+              <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-[#6B7280]"}`} />
+              <span className="font-mono font-medium text-[#F0F0F0] text-[12px]">{formatTimer(secondsRemaining)}</span>
+              <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">{activeTask.title}</span>
               <button
                 onClick={toggleTimer}
                 title={isRunning ? "Pause" : "Play"}
-                className="ml-1 text-neutral-300 hover:text-white transition cursor-pointer"
+                className="ml-1 text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
               >
                 {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
               </button>
               <button
                 onClick={resetTimer}
                 title="Reset Timer"
-                className="text-neutral-400 hover:text-white transition cursor-pointer"
+                className="text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
               </button>
             </div>
           )}
-          <div className="text-[11px] font-mono text-neutral-500">
+          <div className="text-[11px] text-[#6B7280] font-sans">
             {new Date().toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}
           </div>
         </div>
       </header>
 
-      {/* 2. Main Multi-Column Working Board */}
-      <main className="flex-1 flex pt-11 pb-24 w-full h-full overflow-hidden">
+      {/* 2. Main 3-Column Working Board */}
+      <main className="flex-1 flex pt-10 w-full h-full overflow-hidden">
         
-        {/* KOLOM 1: Brain Dump (Staging Pool) */}
-        <section className="w-80 border-r border-[#242528] bg-[#18191B]/40 flex flex-col h-full flex-shrink-0">
-          <div className="p-3 border-b border-[#242528] flex items-center justify-between">
+        {/* KOLOM 1: Brain Dump (Staging Pool + Inline Quick Add) */}
+        <section className="w-80 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
+          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="font-medium text-neutral-200 text-xs">Brain Dump</span>
-              <span className="text-[11px] font-mono text-neutral-500 bg-[#1E1F21] px-1.5 py-0.2 rounded border border-[#2E3035]">
+              <Sparkles className="w-3.5 h-3.5 text-[#9EA3AE]" />
+              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Brain Dump</span>
+              <span className="text-11 font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
                 {brainDump.length}
               </span>
             </div>
-            <span className="text-[11px] text-neutral-500">Tarik ke Top 3</span>
+            <span className="text-11 text-[#6B7280] font-sans">Tarik ke Top 3</span>
           </div>
 
+          {/* List Task Brain Dump */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
             {brainDump.length === 0 ? (
-              <div className="p-6 text-center text-xs text-neutral-500">
-                Isi kepala kosong. Ketik tugas di bar bawah lalu tekan Enter.
+              <div className="p-6 text-center text-12 text-[#6B7280] font-sans">
+                Isi kepala kosong. Tulis tugas baru di input bawah.
               </div>
             ) : (
               brainDump.map((task) => (
@@ -303,26 +293,26 @@ export default function App() {
                   key={task.id}
                   draggable
                   onDragStart={() => handleDragStart(task, "braindump")}
-                  className="group p-2.5 rounded bg-[#1E1F21] border border-[#2E3035] hover:border-neutral-500 transition flex flex-col gap-1.5 cursor-grab active:cursor-grabbing hover:bg-[#232428]"
+                  className="group p-2.5 rounded-[6px] border border-white/[0.08] bg-[#1C1D1F] hover:bg-[#252629] hover:border-white/[0.14] transition-all cursor-grab active:cursor-grabbing flex flex-col gap-1.5"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-1.5 min-w-0">
-                      <GripVertical className="w-3.5 h-3.5 text-neutral-600 group-hover:text-neutral-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs text-neutral-200 leading-snug line-clamp-2">
+                      <GripVertical className="w-3.5 h-3.5 text-[#6B7280] group-hover:text-[#9EA3AE] flex-shrink-0 mt-0.5" />
+                      <span className="text-13 font-sans text-[#F0F0F0] leading-snug line-clamp-2">
                         {task.title}
                       </span>
                     </div>
                     <button
                       onClick={() => promoteToTop3(task)}
                       title="Klik untuk pindahkan ke Top 3"
-                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[11px] font-medium text-[#3E63DD] hover:text-[#5275EC] bg-[#3E63DD]/10 px-1.5 py-0.5 rounded transition cursor-pointer flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-11 font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[4px] transition cursor-pointer flex-shrink-0"
                     >
                       Top 3 <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between pl-5 text-[11px] text-neutral-400 font-mono">
+                  <div className="flex items-center justify-between pl-5 text-11 text-[#9EA3AE] font-sans">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-neutral-500" />
+                      <Clock className="w-3 h-3 text-[#6B7280]" />
                       {task.durationMinutes}m
                     </span>
                     {renderPriorityBadge(task.priority)}
@@ -330,6 +320,32 @@ export default function App() {
                 </div>
               ))
             )}
+          </div>
+
+          {/* INLINE QUICK ADD (Sesuai design.md, menyatu di bawah kolom Brain Dump) */}
+          <div className="p-2.5 border-t border-white/[0.08] bg-[#161719]">
+            <form onSubmit={handleInputSubmit} className="flex flex-col gap-1.5">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Tulis tugas baru... /30m @urgent"
+                  className="w-full rounded-[4px] border border-white/[0.08] bg-[#1C1D1F] px-2.5 py-1.5 pr-8 text-12 text-[#F0F0F0] placeholder:text-[#525866] focus:border-[#3F76FF] focus:outline-none transition-colors font-sans"
+                />
+                <button
+                  type="submit"
+                  disabled={!inputValue.trim()}
+                  className="absolute right-1.5 w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between px-0.5 text-[10px] text-[#6B7280] font-sans">
+                <span>Enter = Simpan</span>
+                <span className="text-[#9EA3AE]">/45m @urgent</span>
+              </div>
+            </form>
           </div>
         </section>
 
@@ -341,25 +357,26 @@ export default function App() {
           }}
           onDragLeave={() => setIsDragOverTop3(false)}
           onDrop={handleDropOnTop3}
-          className={`w-88 border-r border-[#242528] bg-[#161718] flex flex-col h-full flex-shrink-0 transition-colors ${
-            isDragOverTop3 ? "bg-[#1E2333]/40 border-l border-l-[#3E63DD]" : ""
+          className={`w-88 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-colors ${
+            isDragOverTop3 ? "bg-[#1E2333]/30 border-l border-l-[#3F76FF]" : ""
           }`}
         >
-          <div className="p-3 border-b border-[#242528] flex items-center justify-between">
+          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-medium text-neutral-200 text-xs">Top 3 Priorities</span>
-              <span className="text-[11px] font-mono text-neutral-400 bg-[#1E1F21] px-1.5 py-0.2 rounded border border-[#2E3035]">
+              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Top 3 Priorities</span>
+              <span className="text-11 font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
                 {top3.length}/3
               </span>
             </div>
-            <span className="text-[11px] text-neutral-500">Klik kartu untuk set waktu</span>
+            <span className="text-11 text-[#6B7280] font-sans">Klik kartu untuk set jam</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
             {[0, 1, 2].map((index) => {
               const task = top3[index];
               const isSelected = task && selectedTop3Id === task.id;
+              const isTaskRunning = task && activeTask?.id === task.id && isRunning;
 
               return (
                 <div
@@ -369,16 +386,16 @@ export default function App() {
                       setSelectedTop3Id(task.id);
                     }
                   }}
-                  className={`min-h-[118px] rounded border transition p-3 flex flex-col justify-between cursor-pointer ${
+                  className={`min-h-[114px] rounded-[6px] transition-all p-3 flex flex-col justify-between cursor-pointer ${
                     task
                       ? task.completed
-                        ? "bg-[#1A1B1D]/60 border-[#2A2B2E] opacity-50"
+                        ? "bg-[#1C1D1F]/50 border border-white/[0.04] opacity-50"
+                        : isTaskRunning
+                        ? "border border-white/[0.1] border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] ring-1 ring-[#3F76FF]/20"
                         : isSelected
-                        ? "bg-[#1E2024] border-[#3E63DD] ring-2 ring-[#3E63DD]/40 shadow-lg shadow-[#3E63DD]/5"
-                        : activeTask?.id === task.id
-                        ? "bg-[#1E2024] border-amber-500/60 ring-1 ring-amber-500/20"
-                        : "bg-[#1E1F21] border-[#2E3035] hover:border-neutral-500"
-                      : "border-dashed border-[#2E3035] bg-[#18191B]/20 flex items-center justify-center hover:border-neutral-600"
+                        ? "bg-[#212327] border border-white/[0.14] border-l-2 border-l-[#3F76FF] shadow-sm"
+                        : "bg-[#1C1D1F] border border-white/[0.08] hover:bg-[#252629] hover:border-white/[0.12]"
+                      : "border border-dashed border-white/[0.08] bg-[#151617]/50 flex items-center justify-center hover:border-white/[0.14]"
                   }`}
                 >
                   {task ? (
@@ -386,12 +403,12 @@ export default function App() {
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1.5">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-mono text-amber-400 font-semibold uppercase tracking-wider">
+                            <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider">
                               Slot #{index + 1}
                             </span>
                             {isSelected && (
-                              <span className="text-[10px] font-mono text-[#3E63DD] bg-[#3E63DD]/15 px-1.5 py-0.2 rounded border border-[#3E63DD]/30">
-                                Active Set Waktu
+                              <span className="text-[10px] font-sans text-[#3F76FF] bg-[#3F76FF]/10 px-1.5 py-0.2 rounded-[3px] border border-[#3F76FF]/25">
+                                Aktif di Time Grid
                               </span>
                             )}
                           </div>
@@ -401,28 +418,28 @@ export default function App() {
                               demoteToBrainDump(task);
                             }}
                             title="Kembalikan ke Brain Dump"
-                            className="text-neutral-500 hover:text-neutral-300 transition cursor-pointer p-0.5"
+                            className="text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer p-0.5"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <div className={`text-xs font-medium leading-snug ${task.completed ? "line-through text-neutral-400" : "text-white"}`}>
+                        <div className={`text-13 font-sans font-medium leading-snug ${task.completed ? "line-through text-[#6B7280]" : "text-[#F0F0F0]"}`}>
                           {task.title}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-[#2A2B2E] text-[11px]">
-                        <div className="flex items-center gap-1.5 font-mono text-neutral-400">
-                          <Clock className="w-3 h-3 text-neutral-500" />
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-11">
+                        <div className="flex items-center gap-1.5 font-sans text-[#9EA3AE]">
+                          <Clock className="w-3 h-3 text-[#6B7280]" />
                           <span>{task.durationMinutes}m</span>
                           {task.scheduledTime ? (
-                            <span className="text-emerald-400 bg-emerald-950/50 border border-emerald-800/60 px-1.5 py-0.2 rounded flex items-center gap-1">
+                            <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-[3px] flex items-center gap-1 text-[11px]">
                               <CalendarCheck2 className="w-3 h-3" />
                               {task.scheduledTime}
                             </span>
                           ) : (
-                            <span className="text-amber-400/80 bg-amber-950/30 border border-amber-800/40 px-1 rounded text-[10px]">
-                              Belum Dijadwal
+                            <span className="text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-[3px] text-[10px]">
+                              Pilih Jam
                             </span>
                           )}
                         </div>
@@ -434,13 +451,13 @@ export default function App() {
                                 e.stopPropagation();
                                 startFocusBox(task);
                               }}
-                              className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-                                activeTask?.id === task.id && isRunning
-                                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
-                                  : "bg-[#26272B] hover:bg-[#33363D] text-neutral-200"
+                              className={`px-2 py-0.5 rounded-[4px] text-11 font-medium font-sans transition cursor-pointer ${
+                                isTaskRunning
+                                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                  : "bg-white/[0.06] hover:bg-white/[0.12] text-[#F0F0F0]"
                               }`}
                             >
-                              {activeTask?.id === task.id && isRunning ? "Running" : "Start"}
+                              {isTaskRunning ? "Running" : "Start"}
                             </button>
                           )}
                           <button
@@ -452,19 +469,19 @@ export default function App() {
                                 )
                               );
                             }}
-                            className="text-neutral-400 hover:text-emerald-400 transition cursor-pointer"
+                            className="text-[#6B7280] hover:text-emerald-400 transition cursor-pointer"
                           >
                             <CheckCircle2
-                              className={`w-4 h-4 ${task.completed ? "text-emerald-400 fill-emerald-400/20" : ""}`}
+                              className={`w-4 h-4 ${task.completed ? "text-emerald-400 fill-emerald-500/20" : ""}`}
                             />
                           </button>
                         </div>
                       </div>
                     </>
                   ) : (
-                    <div className="text-center text-xs text-neutral-600 font-mono py-4">
+                    <div className="text-center text-12 text-[#6B7280] font-sans py-4">
                       Slot #{index + 1} Kosong
-                      <div className="text-[10px] text-neutral-600 mt-1">
+                      <div className="text-11 text-[#6B7280] mt-1">
                         Drag task dari Brain Dump ke sini
                       </div>
                     </div>
@@ -475,58 +492,56 @@ export default function App() {
           </div>
         </section>
 
-        {/* KOLOM 3: Daily Time-Grid (Hanya terlihat atau aktif saat ada kartu Top 3 yang diklik) */}
-        <section className="flex-1 bg-[#151617] flex flex-col h-full overflow-hidden transition-all">
-          <div className="p-3 border-b border-[#242528] flex items-center justify-between">
+        {/* KOLOM 3: Daily Time-Grid */}
+        <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
+          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="font-medium text-neutral-200 text-xs">Daily Time Grid</span>
+              <Calendar className="w-3.5 h-3.5 text-[#9EA3AE]" />
+              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Daily Time Grid</span>
               {selectedTask ? (
-                <div className="flex items-center gap-1.5 text-xs text-neutral-300 bg-[#1E1F21] px-2 py-0.5 rounded border border-[#2E3035]">
-                  <span className="text-neutral-500">Target:</span>
-                  <span className="text-[#3E63DD] font-medium truncate max-w-[200px]">
+                <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08]">
+                  <span className="text-[#6B7280]">Target:</span>
+                  <span className="text-[#3F76FF] font-medium truncate max-w-[200px]">
                     {selectedTask.title}
                   </span>
-                  <span className="text-[10px] font-mono text-neutral-400">({selectedTask.durationMinutes}m)</span>
+                  <span className="text-11 font-sans text-[#9EA3AE]">({selectedTask.durationMinutes}m)</span>
                 </div>
               ) : (
-                <span className="text-xs text-neutral-500 font-mono">Pilih kartu di Top 3 untuk mengatur jam</span>
+                <span className="text-11 text-[#6B7280] font-sans">Pilih kartu di Top 3 untuk mengatur jam</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-neutral-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3E63DD]" /> Terjadwal</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-neutral-700" /> Slot Bebas</span>
+            <div className="flex items-center gap-2 text-11 text-[#6B7280] font-sans">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3F76FF]" /> Terjadwal</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-white/[0.1]" /> Slot Bebas</span>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5">
             {!selectedTask ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-neutral-500">
-                <Sliders className="w-8 h-8 mb-3 text-neutral-700" />
-                <div className="text-xs font-medium text-neutral-300">Pilih Salah Satu Tugas di Top 3</div>
-                <p className="text-[11px] text-neutral-500 mt-1">
-                  Klik salah satu kartu di kolom Top 3 Priorities untuk membuka dan menaruh jadwalnya ke slot jam Time Grid.
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
+                <Sliders className="w-7 h-7 mb-2 text-[#525866]" />
+                <div className="text-13 font-medium text-[#F0F0F0] font-sans">Pilih Kartu di Kolom Top 3</div>
+                <p className="text-11 text-[#9EA3AE] mt-1 font-sans">
+                  Klik salah satu kartu prioritas untuk mengalokasikan jam mulai ke jadwal Time Grid.
                 </p>
               </div>
             ) : (
-              <div className="max-w-2xl mx-auto space-y-1">
+              <div className="max-w-2xl mx-auto space-y-0.5">
                 {HOURS.map((hour) => {
                   const scheduledTask = top3.find((t) => t.scheduledTime === hour);
-                  const isCurrentActive = activeTask && activeTask.scheduledTime === hour;
+                  const isCurrentActive = activeTask && activeTask.scheduledTime === hour && isRunning;
                   const isSelectedTaskHere = selectedTask.scheduledTime === hour;
 
                   return (
                     <div
                       key={hour}
-                      className={`flex items-center group min-h-[44px] border-b border-[#242528]/60 rounded transition px-2.5 ${
-                        isSelectedTaskHere
-                          ? "bg-[#3E63DD]/10 border-[#3E63DD]/60"
-                          : "hover:bg-[#18191B]/60"
+                      className={`relative h-11 border-b border-white/[0.04] flex items-center hover:bg-white/[0.015] transition-colors rounded-[4px] px-2.5 ${
+                        isSelectedTaskHere ? "bg-[#3F76FF]/[0.06]" : ""
                       }`}
                     >
-                      {/* Hour Label */}
-                      <div className="w-14 font-mono text-[11px] text-neutral-500 select-none">
+                      {/* Hour Label (Satu-satunya tempat font-mono) */}
+                      <div className="w-14 text-right pr-3 font-mono text-10 text-[#6B7280] select-none">
                         {hour}
                       </div>
 
@@ -534,25 +549,25 @@ export default function App() {
                       <div className="flex-1 pl-3">
                         {scheduledTask ? (
                           <div
-                            className={`flex items-center justify-between p-2 rounded border transition ${
-                              isCurrentActive && isRunning
-                                ? "bg-[#3E63DD]/20 border-[#3E63DD] text-white"
+                            className={`rounded-[5px] border px-3 py-1.5 flex items-center justify-between transition-all ${
+                              isCurrentActive
+                                ? "border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] border-white/[0.1] text-white ring-1 ring-[#3F76FF]/20"
                                 : scheduledTask.id === selectedTask.id
-                                ? "bg-[#3E63DD]/15 border-[#3E63DD] text-white"
-                                : "bg-[#1E1F21] border-[#2E3035] text-neutral-300"
+                                ? "border-l-2 border-l-[#3F76FF] bg-[#1E2023] border-white/[0.12] text-white"
+                                : "border border-white/[0.08] bg-[#1C1D1F] text-[#F0F0F0]"
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#3E63DD]" />
-                              <span className="text-xs font-medium">{scheduledTask.title}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#3F76FF]" />
+                              <span className="text-12 font-sans font-medium">{scheduledTask.title}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] font-mono">
-                              <span className="text-neutral-400">{scheduledTask.durationMinutes}m</span>
+                            <div className="flex items-center gap-2 text-11 text-[#9EA3AE] font-sans">
+                              <span>{scheduledTask.durationMinutes}m</span>
                               {scheduledTask.id === selectedTask.id && (
                                 <button
                                   onClick={() => unassignSchedule(scheduledTask.id)}
                                   title="Lepas jam"
-                                  className="text-neutral-400 hover:text-red-400 transition cursor-pointer p-0.5"
+                                  className="text-[#6B7280] hover:text-red-400 transition cursor-pointer p-0.5"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -560,14 +575,13 @@ export default function App() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between text-neutral-600 text-xs">
-                            <span className="text-[11px] font-mono opacity-0 group-hover:opacity-40 transition">
+                          <div className="flex items-center justify-between text-[#6B7280] text-xs">
+                            <span className="text-10 font-sans opacity-0 group-hover:opacity-40 transition">
                               Slot Kosong
                             </span>
-                            {/* Tombol Assign Langsung ke Kartu Top 3 yang Sedang Aktif */}
                             <button
                               onClick={() => assignSchedule(selectedTask.id, hour)}
-                              className="opacity-0 group-hover:opacity-100 transition flex items-center gap-1 text-[11px] font-medium bg-[#3E63DD] hover:bg-[#4E73ED] text-white px-2.5 py-1 rounded transition cursor-pointer shadow-sm"
+                              className="opacity-0 hover:opacity-100 group-hover:opacity-100 transition flex items-center gap-1 text-11 font-medium font-sans bg-[#3F76FF] hover:bg-[#3364DB] text-white px-2.5 py-0.5 rounded-[4px] cursor-pointer"
                             >
                               Jadwalkan jam {hour}
                             </button>
@@ -584,67 +598,27 @@ export default function App() {
 
       </main>
 
-      {/* 3. Floating Input Bar (Center-Bottom ala Cursor / Antigravity) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-xl px-4">
-        <form
-          onSubmit={handleInputSubmit}
-          className="bg-[#1A1B1D] border border-[#2E3035] rounded-xl shadow-2xl p-2 flex flex-col gap-1.5 backdrop-blur-md focus-within:border-neutral-500 transition-all"
-        >
-          <div className="flex items-center gap-2 px-1">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Tulis tugas baru... ketik /30m untuk durasi atau @urgent untuk prioritas"
-              className="flex-1 bg-transparent border-none text-xs text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!inputValue.trim()}
-              className="w-7 h-7 rounded-lg bg-neutral-100 text-neutral-950 flex items-center justify-center hover:bg-neutral-200 disabled:opacity-30 disabled:hover:bg-neutral-100 transition cursor-pointer"
-            >
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Quick Helper Syntax Pills */}
-          <div className="flex items-center justify-between pt-1 border-t border-[#242528] px-1 text-[11px] text-neutral-500">
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[10px] bg-[#242528] px-1.5 py-0.5 rounded text-neutral-400">
-                Enter
-              </span>
-              <span>masuk Brain Dump</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono text-[10px]">
-              <span className="text-neutral-400">/25m /45m</span>
-              <span className="text-red-400">@urgent</span>
-              <span className="text-amber-400">@high</span>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* 4. Hard Stop Evaluation Modal (Saat Timer Habis) */}
+      {/* 3. Hard Stop Evaluation Modal (Saat Timer Habis) */}
       {hardStopDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1E1F21] border border-[#2E3035] w-full max-w-md rounded-xl p-5 shadow-2xl">
+          <div className="bg-[#1C1D1F] border border-white/[0.12] w-full max-w-md rounded-[8px] p-5 shadow-2xl">
             <div className="flex items-center gap-2 text-amber-400 mb-2">
               <AlertCircle className="w-5 h-5" />
-              <h3 className="font-semibold text-sm text-white">Timebox Hard Stop!</h3>
+              <h3 className="font-semibold text-14 text-[#F0F0F0] font-sans">Timebox Hard Stop!</h3>
             </div>
-            <p className="text-xs text-neutral-300 mb-4">
-              Waktu alokasi untuk <strong className="text-white">"{hardStopDialog.title}"</strong> sudah habis. 
+            <p className="text-12 text-[#9EA3AE] mb-4 font-sans leading-relaxed">
+              Waktu alokasi untuk <strong className="text-[#F0F0F0]">"{hardStopDialog.title}"</strong> sudah habis. 
               Sesuai aturan timebox: stop pekerjaan sekarang dan tentukan statusnya.
             </p>
 
-            <div className="flex items-center justify-end gap-2 text-xs">
+            <div className="flex items-center justify-end gap-2 text-11 font-sans">
               <button
                 onClick={() => {
                   demoteToBrainDump(hardStopDialog);
                   setHardStopDialog(null);
                   setActiveTask(null);
                 }}
-                className="px-3 py-1.5 rounded bg-[#26272B] hover:bg-[#33363D] text-neutral-200 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-[#F0F0F0] transition cursor-pointer"
               >
                 Belum Kelar (Jadwalkan Ulang)
               </button>
@@ -656,7 +630,7 @@ export default function App() {
                   setHardStopDialog(null);
                   setActiveTask(null);
                 }}
-                className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition cursor-pointer"
+                className="px-3 py-1.5 rounded-[4px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition cursor-pointer"
               >
                 Tandai Selesai
               </button>
