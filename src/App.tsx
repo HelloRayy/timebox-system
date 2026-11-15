@@ -344,7 +344,7 @@ export default function App() {
       </header>
 
       {/* 2. Main 3-Column Working Board */}
-      <main className="flex-1 flex pt-10 pb-32 w-full h-full overflow-hidden">
+      <main className="flex-1 flex pt-10 pb-0 w-full h-full overflow-hidden">
         
         {/* KOLOM 1: Brain Dump */}
         <section
@@ -368,7 +368,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-2.5 pb-32 space-y-1.5 custom-scrollbar">
             {brainDump.length === 0 ? (
               <div className="p-6 text-center text-12 text-[#6B7280] font-sans">
                 Kosong
@@ -436,7 +436,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3 pb-32 space-y-2.5 custom-scrollbar">
             {[0, 1, 2].map((index) => {
               const task = top3[index];
               const isSelected = task && selectedTop3Id === task.id;
@@ -574,7 +574,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-32">
             {!selectedTask ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
                 <Clock className="w-7 h-7 mb-2 text-[#525866]" />
