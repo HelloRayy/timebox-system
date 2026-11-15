@@ -12,6 +12,9 @@ import {
   ChevronRight,
   Flame,
   X,
+  GripVertical,
+  Sliders,
+  CalendarCheck2
 } from "lucide-react";
 import "./App.css";
 
@@ -44,8 +47,16 @@ export default function App() {
   // 2. Top 3 Priorities (Gate Fokus)
   const [top3, setTop3] = useState<TaskItem[]>([
     { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00" },
-    { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: true, scheduledTime: "10:30" },
+    { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: false },
   ]);
+
+  // Selected card di Top 3 untuk scheduling
+  const [selectedTop3Id, setSelectedTop3Id] = useState<string | null>("t3-2");
+
+  // Dragging State
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
+  const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
 
   // Floating Input State
   const [inputValue, setInputValue] = useState("");
@@ -128,18 +139,48 @@ export default function App() {
     }
     setBrainDump((prev) => prev.filter((t) => t.id !== task.id));
     setTop3((prev) => [...prev, task]);
+    setSelectedTop3Id(task.id);
   };
 
   // Demote from Top 3 -> Brain Dump
   const demoteToBrainDump = (task: TaskItem) => {
     setTop3((prev) => prev.filter((t) => t.id !== task.id));
     setBrainDump((prev) => [{ ...task, scheduledTime: undefined }, ...prev]);
+    if (selectedTop3Id === task.id) {
+      setSelectedTop3Id(null);
+    }
+  };
+
+  // Drag and Drop Handlers
+  const handleDragStart = (task: TaskItem, source: "braindump" | "top3") => {
+    setDraggedTaskId(task.id);
+    setDragSource(source);
+  };
+
+  const handleDropOnTop3 = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverTop3(false);
+    if (!draggedTaskId || dragSource !== "braindump") return;
+
+    const task = brainDump.find((t) => t.id === draggedTaskId);
+    if (task) {
+      promoteToTop3(task);
+    }
+    setDraggedTaskId(null);
+    setDragSource(null);
   };
 
   // Assign slot time
   const assignSchedule = (taskId: string, time: string) => {
     setTop3((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: time } : t))
+    );
+  };
+
+  // Remove schedule from card
+  const unassignSchedule = (taskId: string) => {
+    setTop3((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, scheduledTime: undefined } : t))
     );
   };
 
@@ -188,6 +229,8 @@ export default function App() {
     }
   };
 
+  const selectedTask = top3.find((t) => t.id === selectedTop3Id);
+
   return (
     <div className="flex h-screen w-screen bg-[#151617] text-[#F1F2F4] text-[13px] antialiased select-none overflow-hidden relative">
       {/* 1. Header Bar Minimalis Khas Plane */}
@@ -200,7 +243,7 @@ export default function App() {
           <ChevronRight className="w-3.5 h-3.5 text-neutral-600" />
           <span className="text-neutral-400">Timebox Daily</span>
           <span className="text-[10px] font-mono bg-[#1E1F21] border border-[#2E3035] text-neutral-400 px-1.5 py-0.5 rounded">
-            90% Compact
+            Interactive Flow
           </span>
         </div>
 
@@ -233,11 +276,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* 2. Main 3-Column Working Board */}
+      {/* 2. Main Multi-Column Working Board */}
       <main className="flex-1 flex pt-11 pb-24 w-full h-full overflow-hidden">
         
         {/* KOLOM 1: Brain Dump (Staging Pool) */}
-        <section className="w-80 border-r border-[#242528] bg-[#18191B]/40 flex flex-col h-full">
+        <section className="w-80 border-r border-[#242528] bg-[#18191B]/40 flex flex-col h-full flex-shrink-0">
           <div className="p-3 border-b border-[#242528] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
@@ -246,7 +289,7 @@ export default function App() {
                 {brainDump.length}
               </span>
             </div>
-            <span className="text-[11px] text-neutral-500">Bank Tugas</span>
+            <span className="text-[11px] text-neutral-500">Tarik ke Top 3</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
@@ -258,21 +301,26 @@ export default function App() {
               brainDump.map((task) => (
                 <div
                   key={task.id}
-                  className="group p-2 rounded bg-[#1E1F21] border border-[#2E3035] hover:border-neutral-600 transition flex flex-col gap-1.5"
+                  draggable
+                  onDragStart={() => handleDragStart(task, "braindump")}
+                  className="group p-2.5 rounded bg-[#1E1F21] border border-[#2E3035] hover:border-neutral-500 transition flex flex-col gap-1.5 cursor-grab active:cursor-grabbing hover:bg-[#232428]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs text-neutral-200 leading-snug line-clamp-2">
-                      {task.title}
-                    </span>
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      <GripVertical className="w-3.5 h-3.5 text-neutral-600 group-hover:text-neutral-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs text-neutral-200 leading-snug line-clamp-2">
+                        {task.title}
+                      </span>
+                    </div>
                     <button
                       onClick={() => promoteToTop3(task)}
-                      title="Promosikan ke Top 3 Prioritas"
+                      title="Klik untuk pindahkan ke Top 3"
                       className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[11px] font-medium text-[#3E63DD] hover:text-[#5275EC] bg-[#3E63DD]/10 px-1.5 py-0.5 rounded transition cursor-pointer flex-shrink-0"
                     >
                       Top 3 <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between mt-1 text-[11px] text-neutral-400 font-mono">
+                  <div className="flex items-center justify-between pl-5 text-[11px] text-neutral-400 font-mono">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3 text-neutral-500" />
                       {task.durationMinutes}m
@@ -286,7 +334,17 @@ export default function App() {
         </section>
 
         {/* KOLOM 2: Top 3 Priorities Gate */}
-        <section className="w-88 border-r border-[#242528] bg-[#161718] flex flex-col h-full">
+        <section
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOverTop3(true);
+          }}
+          onDragLeave={() => setIsDragOverTop3(false)}
+          onDrop={handleDropOnTop3}
+          className={`w-88 border-r border-[#242528] bg-[#161718] flex flex-col h-full flex-shrink-0 transition-colors ${
+            isDragOverTop3 ? "bg-[#1E2333]/40 border-l border-l-[#3E63DD]" : ""
+          }`}
+        >
           <div className="p-3 border-b border-[#242528] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -295,36 +353,55 @@ export default function App() {
                 {top3.length}/3
               </span>
             </div>
-            <span className="text-[11px] text-neutral-500">Kunci Hari Ini</span>
+            <span className="text-[11px] text-neutral-500">Klik kartu untuk set waktu</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
             {[0, 1, 2].map((index) => {
               const task = top3[index];
+              const isSelected = task && selectedTop3Id === task.id;
+
               return (
                 <div
                   key={index}
-                  className={`min-h-[110px] rounded border transition p-3 flex flex-col justify-between ${
+                  onClick={() => {
+                    if (task) {
+                      setSelectedTop3Id(task.id);
+                    }
+                  }}
+                  className={`min-h-[118px] rounded border transition p-3 flex flex-col justify-between cursor-pointer ${
                     task
                       ? task.completed
                         ? "bg-[#1A1B1D]/60 border-[#2A2B2E] opacity-50"
+                        : isSelected
+                        ? "bg-[#1E2024] border-[#3E63DD] ring-2 ring-[#3E63DD]/40 shadow-lg shadow-[#3E63DD]/5"
                         : activeTask?.id === task.id
-                        ? "bg-[#1E2024] border-[#3E63DD] ring-1 ring-[#3E63DD]/30"
-                        : "bg-[#1E1F21] border-[#2E3035] hover:border-neutral-600"
-                      : "border-dashed border-[#2E3035] bg-[#18191B]/20 flex items-center justify-center"
+                        ? "bg-[#1E2024] border-amber-500/60 ring-1 ring-amber-500/20"
+                        : "bg-[#1E1F21] border-[#2E3035] hover:border-neutral-500"
+                      : "border-dashed border-[#2E3035] bg-[#18191B]/20 flex items-center justify-center hover:border-neutral-600"
                   }`}
                 >
                   {task ? (
                     <>
                       <div>
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-[10px] font-mono text-amber-400 font-semibold uppercase tracking-wider">
-                            Priority #{index + 1}
-                          </span>
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono text-amber-400 font-semibold uppercase tracking-wider">
+                              Slot #{index + 1}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[10px] font-mono text-[#3E63DD] bg-[#3E63DD]/15 px-1.5 py-0.2 rounded border border-[#3E63DD]/30">
+                                Active Set Waktu
+                              </span>
+                            )}
+                          </div>
                           <button
-                            onClick={() => demoteToBrainDump(task)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              demoteToBrainDump(task);
+                            }}
                             title="Kembalikan ke Brain Dump"
-                            className="text-neutral-500 hover:text-neutral-300 transition cursor-pointer"
+                            className="text-neutral-500 hover:text-neutral-300 transition cursor-pointer p-0.5"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -338,9 +415,14 @@ export default function App() {
                         <div className="flex items-center gap-1.5 font-mono text-neutral-400">
                           <Clock className="w-3 h-3 text-neutral-500" />
                           <span>{task.durationMinutes}m</span>
-                          {task.scheduledTime && (
-                            <span className="text-[#3E63DD] bg-[#3E63DD]/10 px-1 rounded">
-                              @{task.scheduledTime}
+                          {task.scheduledTime ? (
+                            <span className="text-emerald-400 bg-emerald-950/50 border border-emerald-800/60 px-1.5 py-0.2 rounded flex items-center gap-1">
+                              <CalendarCheck2 className="w-3 h-3" />
+                              {task.scheduledTime}
+                            </span>
+                          ) : (
+                            <span className="text-amber-400/80 bg-amber-950/30 border border-amber-800/40 px-1 rounded text-[10px]">
+                              Belum Dijadwal
                             </span>
                           )}
                         </div>
@@ -348,7 +430,10 @@ export default function App() {
                         <div className="flex items-center gap-1.5">
                           {!task.completed && (
                             <button
-                              onClick={() => startFocusBox(task)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startFocusBox(task);
+                              }}
                               className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
                                 activeTask?.id === task.id && isRunning
                                   ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
@@ -359,7 +444,8 @@ export default function App() {
                             </button>
                           )}
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setTop3((prev) =>
                                 prev.map((t) =>
                                   t.id === task.id ? { ...t, completed: !t.completed } : t
@@ -376,9 +462,11 @@ export default function App() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center text-xs text-neutral-600 font-mono">
+                    <div className="text-center text-xs text-neutral-600 font-mono py-4">
                       Slot #{index + 1} Kosong
-                      <div className="text-[10px] text-neutral-700 mt-0.5">Promosikan dari Brain Dump</div>
+                      <div className="text-[10px] text-neutral-600 mt-1">
+                        Drag task dari Brain Dump ke sini
+                      </div>
                     </div>
                   )}
                 </div>
@@ -387,80 +475,110 @@ export default function App() {
           </div>
         </section>
 
-        {/* KOLOM 3: Daily Time-Grid (Jadwal Jam Kaku) */}
-        <section className="flex-1 bg-[#151617] flex flex-col h-full overflow-hidden">
+        {/* KOLOM 3: Daily Time-Grid (Hanya terlihat atau aktif saat ada kartu Top 3 yang diklik) */}
+        <section className="flex-1 bg-[#151617] flex flex-col h-full overflow-hidden transition-all">
           <div className="p-3 border-b border-[#242528] flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="font-medium text-neutral-200 text-xs">Today's Time Grid</span>
+              <span className="font-medium text-neutral-200 text-xs">Daily Time Grid</span>
+              {selectedTask ? (
+                <div className="flex items-center gap-1.5 text-xs text-neutral-300 bg-[#1E1F21] px-2 py-0.5 rounded border border-[#2E3035]">
+                  <span className="text-neutral-500">Target:</span>
+                  <span className="text-[#3E63DD] font-medium truncate max-w-[200px]">
+                    {selectedTask.title}
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400">({selectedTask.durationMinutes}m)</span>
+                </div>
+              ) : (
+                <span className="text-xs text-neutral-500 font-mono">Pilih kartu di Top 3 untuk mengatur jam</span>
+              )}
             </div>
+
             <div className="flex items-center gap-2 text-[11px] text-neutral-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3E63DD]" /> Scheduled</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-neutral-700" /> Open Slot</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3E63DD]" /> Terjadwal</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-neutral-700" /> Slot Bebas</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-            <div className="max-w-3xl mx-auto space-y-1">
-              {HOURS.map((hour) => {
-                const scheduledTask = top3.find((t) => t.scheduledTime === hour);
-                const isCurrentActive = activeTask && activeTask.scheduledTime === hour;
+            {!selectedTask ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-neutral-500">
+                <Sliders className="w-8 h-8 mb-3 text-neutral-700" />
+                <div className="text-xs font-medium text-neutral-300">Pilih Salah Satu Tugas di Top 3</div>
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  Klik salah satu kartu di kolom Top 3 Priorities untuk membuka dan menaruh jadwalnya ke slot jam Time Grid.
+                </p>
+              </div>
+            ) : (
+              <div className="max-w-2xl mx-auto space-y-1">
+                {HOURS.map((hour) => {
+                  const scheduledTask = top3.find((t) => t.scheduledTime === hour);
+                  const isCurrentActive = activeTask && activeTask.scheduledTime === hour;
+                  const isSelectedTaskHere = selectedTask.scheduledTime === hour;
 
-                return (
-                  <div
-                    key={hour}
-                    className="flex items-center group min-h-[44px] border-b border-[#242528]/60 hover:bg-[#18191B]/40 rounded transition px-2"
-                  >
-                    {/* Hour Label */}
-                    <div className="w-14 font-mono text-[11px] text-neutral-500 select-none">
-                      {hour}
-                    </div>
+                  return (
+                    <div
+                      key={hour}
+                      className={`flex items-center group min-h-[44px] border-b border-[#242528]/60 rounded transition px-2.5 ${
+                        isSelectedTaskHere
+                          ? "bg-[#3E63DD]/10 border-[#3E63DD]/60"
+                          : "hover:bg-[#18191B]/60"
+                      }`}
+                    >
+                      {/* Hour Label */}
+                      <div className="w-14 font-mono text-[11px] text-neutral-500 select-none">
+                        {hour}
+                      </div>
 
-                    {/* Time Slot Body */}
-                    <div className="flex-1 pl-3">
-                      {scheduledTask ? (
-                        <div
-                          className={`flex items-center justify-between p-2 rounded border transition ${
-                            isCurrentActive && isRunning
-                              ? "bg-[#3E63DD]/10 border-[#3E63DD] text-white"
-                              : "bg-[#1E1F21] border-[#2E3035] text-neutral-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#3E63DD]" />
-                            <span className="text-xs font-medium">{scheduledTask.title}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-400">
-                            <span>{scheduledTask.durationMinutes}m</span>
-                            {renderPriorityBadge(scheduledTask.priority)}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between text-neutral-600 text-xs">
-                          <span className="text-[11px] font-mono opacity-0 group-hover:opacity-60 transition">
-                            Slot Kosong
-                          </span>
-                          {/* Quick plot dropdown / button */}
-                          <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                            {top3
-                              .filter((t) => !t.scheduledTime && !t.completed)
-                              .map((t) => (
+                      {/* Time Slot Body */}
+                      <div className="flex-1 pl-3">
+                        {scheduledTask ? (
+                          <div
+                            className={`flex items-center justify-between p-2 rounded border transition ${
+                              isCurrentActive && isRunning
+                                ? "bg-[#3E63DD]/20 border-[#3E63DD] text-white"
+                                : scheduledTask.id === selectedTask.id
+                                ? "bg-[#3E63DD]/15 border-[#3E63DD] text-white"
+                                : "bg-[#1E1F21] border-[#2E3035] text-neutral-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#3E63DD]" />
+                              <span className="text-xs font-medium">{scheduledTask.title}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] font-mono">
+                              <span className="text-neutral-400">{scheduledTask.durationMinutes}m</span>
+                              {scheduledTask.id === selectedTask.id && (
                                 <button
-                                  key={t.id}
-                                  onClick={() => assignSchedule(t.id, hour)}
-                                  className="text-[10px] bg-[#1E1F21] border border-[#2E3035] hover:border-neutral-500 px-2 py-0.5 rounded text-neutral-300 transition cursor-pointer"
+                                  onClick={() => unassignSchedule(scheduledTask.id)}
+                                  title="Lepas jam"
+                                  className="text-neutral-400 hover:text-red-400 transition cursor-pointer p-0.5"
                                 >
-                                  + Plot "{t.title.slice(0, 14)}..."
+                                  <X className="w-3 h-3" />
                                 </button>
-                              ))}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="flex items-center justify-between text-neutral-600 text-xs">
+                            <span className="text-[11px] font-mono opacity-0 group-hover:opacity-40 transition">
+                              Slot Kosong
+                            </span>
+                            {/* Tombol Assign Langsung ke Kartu Top 3 yang Sedang Aktif */}
+                            <button
+                              onClick={() => assignSchedule(selectedTask.id, hour)}
+                              className="opacity-0 group-hover:opacity-100 transition flex items-center gap-1 text-[11px] font-medium bg-[#3E63DD] hover:bg-[#4E73ED] text-white px-2.5 py-1 rounded transition cursor-pointer shadow-sm"
+                            >
+                              Jadwalkan jam {hour}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
@@ -522,7 +640,6 @@ export default function App() {
             <div className="flex items-center justify-end gap-2 text-xs">
               <button
                 onClick={() => {
-                  // Jadwalkan ulang (kembalikan ke Brain Dump)
                   demoteToBrainDump(hardStopDialog);
                   setHardStopDialog(null);
                   setActiveTask(null);
@@ -533,7 +650,6 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  // Tandai selesai
                   setTop3((prev) =>
                     prev.map((t) => (t.id === hardStopDialog.id ? { ...t, completed: true } : t))
                   );
