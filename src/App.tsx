@@ -67,7 +67,6 @@ export default function App() {
   const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
   const [isDragOverBrainDump, setIsDragOverBrainDump] = useState<boolean>(false);
-  const [hoveredTimeSlot, setHoveredTimeSlot] = useState<string | null>(null);
 
   const [inputValue, setInputValue] = useState("");
   const inputDuration = 30;
@@ -579,10 +578,21 @@ export default function App() {
                 <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
               </div>
             ) : (
-              <div className="max-w-xl mx-auto space-y-4">
+              <div className="max-w-md mx-auto bg-[#1C1D1F] border border-white/[0.08] rounded-[10px] p-4 shadow-sm flex flex-col gap-4">
                 
-                {/* 1. Compact Mini Calendar Strip */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[6px] p-2.5 shadow-sm">
+                {/* 1. Header Ringkas (Tanggal & Durasi Aktif) */}
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5 text-12 font-sans">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-[#F0F0F0]">Timebox</span>
+                    <span className="text-[#9EA3AE] text-11">({customStartTime} - {calculatedEndTime})</span>
+                  </div>
+                  <span className="text-11 font-medium text-[#3F76FF] bg-[#3F76FF]/10 px-2 py-0.5 rounded-[4px]">
+                    {customDuration} Menit
+                  </span>
+                </div>
+
+                {/* 2. Mini Calendar Strip */}
+                <div>
                   <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-[#6B7280] font-sans mb-1">
                     <span>Mo</span>
                     <span>Tu</span>
@@ -592,7 +602,6 @@ export default function App() {
                     <span>Sa</span>
                     <span>Su</span>
                   </div>
-
                   <div className="grid grid-cols-7 gap-1 text-center font-sans">
                     {calendarDays.slice(7, 28).map((item, idx) => {
                       const isSelected = selectedDate === item.day;
@@ -604,7 +613,7 @@ export default function App() {
                           onClick={() => setSelectedDate(item.day)}
                           className={`h-6 rounded-[3px] flex items-center justify-center transition cursor-pointer text-[11px] font-sans ${
                             isSelected
-                              ? "bg-[#3F76FF] text-white font-medium"
+                              ? "bg-[#3F76FF] text-white font-medium shadow-sm"
                               : isToday
                               ? "bg-white/[0.08] text-[#F0F0F0] border border-[#3F76FF]/40"
                               : "text-[#9EA3AE] hover:bg-white/[0.04] hover:text-[#F0F0F0]"
@@ -617,33 +626,33 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Grid Jam Besar dengan Micro-Behavior Live Preview */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[6px] p-3.5 shadow-sm flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between text-12 font-sans border-b border-white/[0.06] pb-2">
-                    <span className="text-[#F0F0F0] font-sans text-12 font-medium">
-                      {hoveredTimeSlot || customStartTime} - {calculateEndTime(hoveredTimeSlot || customStartTime, customDuration)} 
-                      <span className="text-[#9EA3AE] text-11 ml-1.5">({customDuration}m)</span>
-                    </span>
-
-                    <div className="flex items-center gap-1 font-sans">
-                      {[15, 25, 30, 45, 60].map((mins) => (
+                {/* 3. Duration Presets (Langsung Set Menit ala Gambar 2) */}
+                <div className="pt-2 border-t border-white/[0.04]">
+                  <div className="text-[11px] text-[#6B7280] font-sans mb-1.5">Pilih Durasi Fokus:</div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[15, 25, 30, 45, 60].map((mins) => {
+                      const isDurationActive = customDuration === mins;
+                      return (
                         <button
                           key={mins}
                           onClick={() => setCustomDuration(mins)}
-                          className={`px-1.5 py-0.5 rounded-[3px] text-10 font-sans transition cursor-pointer ${
-                            customDuration === mins
-                              ? "bg-[#3F76FF] text-white font-medium"
-                              : "bg-white/[0.04] text-[#9EA3AE] hover:bg-white/[0.08]"
+                          className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
+                            isDurationActive
+                              ? "bg-white/[0.08] border-[#3F76FF] text-[#3F76FF] font-medium"
+                              : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.04]"
                           }`}
                         >
                           {mins}m
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Grid Jam (Sans font) */}
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 pt-1">
+                {/* 4. Slot Jam Mulai (Clean Grid) */}
+                <div className="pt-2 border-t border-white/[0.04]">
+                  <div className="text-[11px] text-[#6B7280] font-sans mb-1.5">Pilih Jam Mulai:</div>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
                     {TIME_OPTIONS.map((time) => {
                       const isCurrentSelected = customStartTime === time;
                       const isOccupiedByOther = top3.some(
@@ -654,18 +663,13 @@ export default function App() {
                         <button
                           key={time}
                           disabled={isOccupiedByOther}
-                          onMouseEnter={() => !isOccupiedByOther && setHoveredTimeSlot(time)}
-                          onMouseLeave={() => setHoveredTimeSlot(null)}
-                          onClick={() => {
-                            setCustomStartTime(time);
-                            applyTimeRange(time, customDuration);
-                          }}
-                          className={`h-9 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 active:scale-95 ${
+                          onClick={() => setCustomStartTime(time)}
+                          className={`h-8 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 active:scale-95 ${
                             isCurrentSelected
                               ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-sm"
                               : isOccupiedByOther
                               ? "bg-white/[0.02] border-white/[0.04] text-[#525866] cursor-not-allowed line-through"
-                              : "bg-[#161719] border-white/[0.08] text-[#D0D4DC] hover:border-white/[0.2] hover:bg-[#202226]"
+                              : "bg-[#161719] border-white/[0.06] text-[#D0D4DC] hover:border-white/[0.16] hover:bg-[#202226]"
                           }`}
                         >
                           {time}
@@ -673,16 +677,17 @@ export default function App() {
                       );
                     })}
                   </div>
+                </div>
 
-                  <div className="pt-2 border-t border-white/[0.04] flex items-center justify-end">
-                    <button
-                      onClick={() => applyTimeRange(customStartTime, customDuration)}
-                      className="px-3 py-1 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-95 text-white font-medium text-11 font-sans transition cursor-pointer flex items-center gap-1 shadow-sm"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Kunci {customStartTime} - {calculatedEndTime}
-                    </button>
-                  </div>
+                {/* 5. Tombol Done / Kunci Waktu Besar & Nyaman (Sesuai Gambar 2) */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => applyTimeRange(customStartTime, customDuration)}
+                    className="w-full py-2.5 rounded-[6px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-[0.98] text-white font-medium text-12 font-sans transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <Check className="w-4 h-4" />
+                    Done ({customStartTime} - {calculatedEndTime})
+                  </button>
                 </div>
 
               </div>
