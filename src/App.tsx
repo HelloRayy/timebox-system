@@ -17,6 +17,9 @@ import {
   Check
 } from "lucide-react";
 import "./App.css";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 export type Priority = "urgent" | "high" | "medium" | "low" | "none";
 
@@ -254,31 +257,31 @@ export default function App() {
     switch (p) {
       case "urgent":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.2 rounded-[3px]">
+          <Badge variant="urgent">
             <span className="w-1 h-1 rounded-full bg-red-400" />
             Urgent
-          </span>
+          </Badge>
         );
       case "high":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.2 rounded-[3px]">
+          <Badge variant="high">
             <span className="w-1 h-1 rounded-full bg-orange-400" />
             High
-          </span>
+          </Badge>
         );
       case "medium":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-[3px]">
+          <Badge variant="medium">
             <span className="w-1 h-1 rounded-full bg-amber-400" />
             Med
-          </span>
+          </Badge>
         );
       case "low":
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded-[3px]">
+          <Badge variant="low">
             <span className="w-1 h-1 rounded-full bg-indigo-400" />
             Low
-          </span>
+          </Badge>
         );
       default:
         return null;
@@ -578,7 +581,7 @@ export default function App() {
                 <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
               </div>
             ) : (
-              <div className="max-w-md mx-auto bg-[#1C1D1F] border border-white/[0.08] rounded-[10px] p-4 shadow-sm flex flex-col gap-4">
+              <Card className="max-w-md mx-auto p-4 shadow-sm flex flex-col gap-4 border-white/[0.08] bg-[#1C1D1F]">
                 
                 {/* 1. Header Ringkas (Tanggal & Durasi Aktif) */}
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5 text-12 font-sans">
@@ -681,16 +684,16 @@ export default function App() {
 
                 {/* 5. Tombol Done / Kunci Waktu Besar & Nyaman (Sesuai Gambar 2) */}
                 <div className="pt-2">
-                  <button
+                  <Button
                     onClick={() => applyTimeRange(customStartTime, customDuration)}
-                    className="w-full py-2.5 rounded-[6px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-[0.98] text-white font-medium text-12 font-sans transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                    className="w-full h-9 rounded-[6px] text-12 font-medium shadow-md gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     Done ({customStartTime} - {calculatedEndTime})
-                  </button>
+                  </Button>
                 </div>
 
-              </div>
+              </Card>
             )}
           </div>
         </section>
