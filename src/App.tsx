@@ -13,8 +13,7 @@ import {
   Flame,
   X,
   GripVertical,
-  CalendarCheck2,
-  Check
+  CalendarCheck2
 } from "lucide-react";
 import "./App.css";
 import { Button } from "@/components/ui/button";
@@ -32,13 +31,6 @@ export interface TaskItem {
   scheduledTime?: string;
   scheduledEndTime?: string;
 }
-
-const TIME_OPTIONS = [
-  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
-  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
-];
 
 const calculateEndTime = (start: string, durationMin: number) => {
   const [h, m] = start.split(":").map(Number);
@@ -61,8 +53,9 @@ export default function App() {
   ]);
 
   const [selectedTop3Id, setSelectedTop3Id] = useState<string | null>("t3-2");
-  const [selectedDate, setSelectedDate] = useState<number>(15);
-  const [customStartTime, setCustomStartTime] = useState<string>("10:00");
+  const [selectedHour, setSelectedHour] = useState<number>(9);
+  const [selectedMinute, setSelectedMinute] = useState<number>(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<"am" | "pm">("am");
   const [customDuration, setCustomDuration] = useState<number>(30);
 
   // Micro-behavior Drag States
@@ -83,7 +76,14 @@ export default function App() {
   useEffect(() => {
     const task = top3.find((t) => t.id === selectedTop3Id);
     if (task) {
-      if (task.scheduledTime) setCustomStartTime(task.scheduledTime);
+      if (task.scheduledTime) {
+        const [h, m] = task.scheduledTime.split(":").map(Number);
+        const isPm = h >= 12;
+        const displayH = h % 12 === 0 ? 12 : h % 12;
+        setSelectedHour(displayH);
+        setSelectedMinute(m);
+        setSelectedPeriod(isPm ? "pm" : "am");
+      }
       setCustomDuration(task.durationMinutes);
     }
   }, [selectedTop3Id, top3]);
@@ -289,16 +289,13 @@ export default function App() {
   };
 
   const selectedTask = top3.find((t) => t.id === selectedTop3Id);
-  const calculatedEndTime = calculateEndTime(customStartTime, customDuration);
-
-  const calendarDays = [
-    { day: 26, isOtherMonth: true }, { day: 27, isOtherMonth: true }, { day: 28, isOtherMonth: true }, { day: 29, isOtherMonth: true }, { day: 30, isOtherMonth: true }, { day: 31, isOtherMonth: true }, { day: 1 },
-    { day: 2 }, { day: 3 }, { day: 4 }, { day: 5 }, { day: 6 }, { day: 7 }, { day: 8 },
-    { day: 9 }, { day: 10 }, { day: 11 }, { day: 12 }, { day: 13 }, { day: 14 }, { day: 15 },
-    { day: 16 }, { day: 17 }, { day: 18 }, { day: 19 }, { day: 20 }, { day: 21 }, { day: 22 },
-    { day: 23 }, { day: 24 }, { day: 25 }, { day: 26 }, { day: 27 }, { day: 28 }, { day: 29 },
-    { day: 30 }
-  ];
+  
+  // Format 24h start time string dari 12h wheel picker
+  const hour24 = selectedPeriod === "pm" 
+    ? (selectedHour === 12 ? 12 : selectedHour + 12) 
+    : (selectedHour === 12 ? 0 : selectedHour);
+  const formattedStartTime = `${hour24.toString().padStart(2, "0")}:${selectedMinute.toString().padStart(2, "0")}`;
+  const calculatedEndTime = calculateEndTime(formattedStartTime, customDuration);
 
   return (
     <div className="flex h-screen w-screen bg-[#131415] text-[#F0F0F0] text-[13px] antialiased select-none overflow-hidden relative font-sans">
@@ -581,115 +578,127 @@ export default function App() {
                 <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
               </div>
             ) : (
-              <Card className="max-w-md mx-auto p-4 shadow-sm flex flex-col gap-4 border-white/[0.08] bg-[#1C1D1F]">
+              <Card className="max-w-[340px] mx-auto p-5 shadow-xl flex flex-col items-center border-white/[0.08] bg-[#1C1D1F] rounded-[14px]">
                 
-                {/* 1. Header Ringkas (Tanggal & Durasi Aktif) */}
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5 text-12 font-sans">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-[#F0F0F0]">Timebox</span>
-                    <span className="text-[#9EA3AE] text-11">({customStartTime} - {calculatedEndTime})</span>
-                  </div>
-                  <span className="text-11 font-medium text-[#3F76FF] bg-[#3F76FF]/10 px-2 py-0.5 rounded-[4px]">
-                    {customDuration} Menit
-                  </span>
+                {/* Judul Bersih Khas Gambar 2 */}
+                <div className="text-14 font-medium text-[#F0F0F0] font-sans mb-4">
+                  Time
                 </div>
 
-                {/* 2. Mini Calendar Strip */}
-                <div>
-                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-[#6B7280] font-sans mb-1">
-                    <span>Mo</span>
-                    <span>Tu</span>
-                    <span>We</span>
-                    <span>Th</span>
-                    <span>Fr</span>
-                    <span>Sa</span>
-                    <span>Su</span>
+                {/* Vertical Time Drum / Wheel Simulator */}
+                <div className="relative w-full flex flex-col items-center justify-center py-2 select-none">
+                  {/* Faded Row Atas (Preview -1) */}
+                  <div className="flex items-center justify-center gap-6 text-[#525866] text-12 font-sans py-1 opacity-40">
+                    <span className="w-8 text-center">{selectedHour === 1 ? 12 : selectedHour - 1}</span>
+                    <span className="text-[#525866]">:</span>
+                    <span className="w-8 text-center">{selectedMinute === 0 ? "45" : (selectedMinute - 15).toString().padStart(2, "0")}</span>
+                    <span className="w-8 text-center">{selectedPeriod === "am" ? "pm" : "am"}</span>
                   </div>
-                  <div className="grid grid-cols-7 gap-1 text-center font-sans">
-                    {calendarDays.slice(7, 28).map((item, idx) => {
-                      const isSelected = selectedDate === item.day;
-                      const isToday = item.day === 15;
+
+                  {/* Active Selected Row (Tengah dengan Highlight Capsule Lembut) */}
+                  <div className="flex items-center justify-center gap-4 bg-white/[0.06] border border-white/[0.08] rounded-[10px] py-2 px-6 my-1 w-full shadow-inner">
+                    {/* Hour Select Button/Scroll */}
+                    <button
+                      onClick={() => setSelectedHour((prev) => (prev % 12) + 1)}
+                      className="w-10 text-center text-20 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
+                    >
+                      {selectedHour}
+                    </button>
+
+                    <span className="text-18 font-bold text-[#9EA3AE]">:</span>
+
+                    {/* Minute Select Button/Scroll */}
+                    <button
+                      onClick={() => setSelectedMinute((prev) => (prev + 15) % 60)}
+                      className="w-10 text-center text-20 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
+                    >
+                      {selectedMinute.toString().padStart(2, "0")}
+                    </button>
+
+                    {/* AM / PM Toggle */}
+                    <button
+                      onClick={() => setSelectedPeriod((prev) => (prev === "am" ? "pm" : "am"))}
+                      className="w-10 text-center text-16 font-medium text-[#9EA3AE] hover:text-[#3F76FF] uppercase transition cursor-pointer"
+                    >
+                      {selectedPeriod}
+                    </button>
+                  </div>
+
+                  {/* Faded Row Bawah (Preview +1) */}
+                  <div className="flex items-center justify-center gap-6 text-[#525866] text-12 font-sans py-1 opacity-40">
+                    <span className="w-8 text-center">{selectedHour === 12 ? 1 : selectedHour + 1}</span>
+                    <span className="text-[#525866]">:</span>
+                    <span className="w-8 text-center">{(selectedMinute + 15) % 60 === 0 ? "00" : ((selectedMinute + 15) % 60).toString().padStart(2, "0")}</span>
+                    <span className="w-8 text-center">{selectedPeriod}</span>
+                  </div>
+                </div>
+
+                {/* Presets Jam Cepat (9 am, 12 pm, 4 pm, 6 pm - Sesuai Gambar 2) */}
+                <div className="w-full mt-3 pt-3 border-t border-white/[0.04]">
+                  <div className="text-[11px] text-[#6B7280] font-sans mb-1.5 text-left">Presets Jam:</div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { h: 9, m: 0, p: "am", label: "9 am" },
+                      { h: 12, m: 0, p: "pm", label: "12 pm" },
+                      { h: 4, m: 0, p: "pm", label: "4 pm" },
+                      { h: 6, m: 0, p: "pm", label: "6 pm" },
+                    ].map((item) => {
+                      const isActivePreset =
+                        selectedHour === item.h &&
+                        selectedMinute === item.m &&
+                        selectedPeriod === item.p;
 
                       return (
                         <button
-                          key={idx}
-                          onClick={() => setSelectedDate(item.day)}
-                          className={`h-6 rounded-[3px] flex items-center justify-center transition cursor-pointer text-[11px] font-sans ${
-                            isSelected
-                              ? "bg-[#3F76FF] text-white font-medium shadow-sm"
-                              : isToday
-                              ? "bg-white/[0.08] text-[#F0F0F0] border border-[#3F76FF]/40"
-                              : "text-[#9EA3AE] hover:bg-white/[0.04] hover:text-[#F0F0F0]"
-                          }`}
-                        >
-                          {item.day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. Duration Presets (Langsung Set Menit ala Gambar 2) */}
-                <div className="pt-2 border-t border-white/[0.04]">
-                  <div className="text-[11px] text-[#6B7280] font-sans mb-1.5">Pilih Durasi Fokus:</div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[15, 25, 30, 45, 60].map((mins) => {
-                      const isDurationActive = customDuration === mins;
-                      return (
-                        <button
-                          key={mins}
-                          onClick={() => setCustomDuration(mins)}
-                          className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
-                            isDurationActive
+                          key={item.label}
+                          onClick={() => {
+                            setSelectedHour(item.h);
+                            setSelectedMinute(item.m);
+                            setSelectedPeriod(item.p as "am" | "pm");
+                          }}
+                          className={`h-8 rounded-[6px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
+                            isActivePreset
                               ? "bg-white/[0.08] border-[#3F76FF] text-[#3F76FF] font-medium"
                               : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.04]"
                           }`}
                         >
-                          {mins}m
+                          {item.label}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* 4. Slot Jam Mulai (Clean Grid) */}
-                <div className="pt-2 border-t border-white/[0.04]">
-                  <div className="text-[11px] text-[#6B7280] font-sans mb-1.5">Pilih Jam Mulai:</div>
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
-                    {TIME_OPTIONS.map((time) => {
-                      const isCurrentSelected = customStartTime === time;
-                      const isOccupiedByOther = top3.some(
-                        (t) => t.id !== selectedTask.id && t.scheduledTime === time
-                      );
-
-                      return (
-                        <button
-                          key={time}
-                          disabled={isOccupiedByOther}
-                          onClick={() => setCustomStartTime(time)}
-                          className={`h-8 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 active:scale-95 ${
-                            isCurrentSelected
-                              ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-sm"
-                              : isOccupiedByOther
-                              ? "bg-white/[0.02] border-white/[0.04] text-[#525866] cursor-not-allowed line-through"
-                              : "bg-[#161719] border-white/[0.06] text-[#D0D4DC] hover:border-white/[0.16] hover:bg-[#202226]"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      );
-                    })}
+                {/* Pilihan Durasi Pengerjaan (+ Waktu Akhir Terhitung) */}
+                <div className="w-full mt-2.5 pt-2.5 border-t border-white/[0.04]">
+                  <div className="flex items-center justify-between text-[11px] font-sans mb-1.5">
+                    <span className="text-[#6B7280]">Durasi Pengerjaan:</span>
+                    <span className="text-emerald-400 font-medium">Selesai jam {calculatedEndTime}</span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {[15, 25, 30, 45, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => setCustomDuration(mins)}
+                        className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
+                          customDuration === mins
+                            ? "bg-[#3F76FF] text-white font-medium border-[#3F76FF]"
+                            : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0]"
+                        }`}
+                      >
+                        +{mins}m
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* 5. Tombol Done / Kunci Waktu Besar & Nyaman (Sesuai Gambar 2) */}
-                <div className="pt-2">
+                {/* Tombol Done Biru Lebar Sesuai Gambar 2 */}
+                <div className="w-full mt-4">
                   <Button
-                    onClick={() => applyTimeRange(customStartTime, customDuration)}
-                    className="w-full h-9 rounded-[6px] text-12 font-medium shadow-md gap-1.5"
+                    onClick={() => applyTimeRange(formattedStartTime, customDuration)}
+                    className="w-full h-10 rounded-[8px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-[0.98] text-white font-medium text-13 shadow-md transition"
                   >
-                    <Check className="w-4 h-4" />
-                    Done ({customStartTime} - {calculatedEndTime})
+                    Done ({formattedStartTime} - {calculatedEndTime})
                   </Button>
                 </div>
 
