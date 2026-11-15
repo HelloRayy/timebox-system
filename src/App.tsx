@@ -26,11 +26,10 @@ export interface TaskItem {
   durationMinutes: number;
   priority: Priority;
   completed: boolean;
-  scheduledTime?: string; // e.g. "09:00"
-  scheduledEndTime?: string; // e.g. "10:00"
+  scheduledTime?: string;
+  scheduledEndTime?: string;
 }
 
-// 24 Hour Slots
 const TIME_OPTIONS = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
   "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
@@ -38,7 +37,6 @@ const TIME_OPTIONS = [
   "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
 ];
 
-// Helper kalkulasi end time berdasarkan durasi menit
 const calculateEndTime = (start: string, durationMin: number) => {
   const [h, m] = start.split(":").map(Number);
   const totalMin = h * 60 + m + durationMin;
@@ -48,75 +46,56 @@ const calculateEndTime = (start: string, durationMin: number) => {
 };
 
 export default function App() {
-  // 1. Brain Dump list
   const [brainDump, setBrainDump] = useState<TaskItem[]>([
     { id: "bd-1", title: "Review PR backend optimization", durationMinutes: 30, priority: "high", completed: false },
     { id: "bd-2", title: "Kirim update milestone ke klien", durationMinutes: 20, priority: "medium", completed: false },
     { id: "bd-3", title: "Tulis test case auth module", durationMinutes: 45, priority: "low", completed: false },
   ]);
 
-  // 2. Top 3 Priorities
   const [top3, setTop3] = useState<TaskItem[]>([
     { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00", scheduledEndTime: "10:00" },
     { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: false },
   ]);
 
-  // Selected card di Top 3 untuk scheduling
   const [selectedTop3Id, setSelectedTop3Id] = useState<string | null>("t3-2");
-
-  // Date selection state (Interactive mini calendar ala referensi)
   const [selectedDate, setSelectedDate] = useState<number>(15);
-
-  // Time Range Picker State untuk kartu yang dipilih
   const [customStartTime, setCustomStartTime] = useState<string>("10:00");
   const [customDuration, setCustomDuration] = useState<number>(30);
 
-  // Dragging State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
 
-  // Floating Input State
   const [inputValue, setInputValue] = useState("");
   const inputDuration = 30;
   const inputPriority: Priority = "medium";
 
-  // Timer State
   const [activeTask, setActiveTask] = useState<TaskItem | null>(top3[0] || null);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(60 * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [hardStopDialog, setHardStopDialog] = useState<TaskItem | null>(null);
 
-  // Sync state picker saat card selected berganti
   useEffect(() => {
     const task = top3.find((t) => t.id === selectedTop3Id);
     if (task) {
-      if (task.scheduledTime) {
-        setCustomStartTime(task.scheduledTime);
-      }
+      if (task.scheduledTime) setCustomStartTime(task.scheduledTime);
       setCustomDuration(task.durationMinutes);
     }
   }, [selectedTop3Id, top3]);
 
-  // Timer Interval Loop
   useEffect(() => {
     let interval: number | null = null;
     if (isRunning && secondsRemaining > 0) {
-      interval = window.setInterval(() => {
-        setSecondsRemaining((prev) => prev - 1);
-      }, 1000);
+      interval = window.setInterval(() => setSecondsRemaining((prev) => prev - 1), 1000);
     } else if (secondsRemaining === 0 && isRunning) {
       setIsRunning(false);
-      if (activeTask) {
-        setHardStopDialog(activeTask);
-      }
+      if (activeTask) setHardStopDialog(activeTask);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [isRunning, secondsRemaining, activeTask]);
 
-  // Submit from Floating Input Bar (Center-Bottom)
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -170,9 +149,7 @@ export default function App() {
   const demoteToBrainDump = (task: TaskItem) => {
     setTop3((prev) => prev.filter((t) => t.id !== task.id));
     setBrainDump((prev) => [{ ...task, scheduledTime: undefined, scheduledEndTime: undefined }, ...prev]);
-    if (selectedTop3Id === task.id) {
-      setSelectedTop3Id(null);
-    }
+    if (selectedTop3Id === task.id) setSelectedTop3Id(null);
   };
 
   const handleDragStart = (task: TaskItem, source: "braindump" | "top3") => {
@@ -186,14 +163,11 @@ export default function App() {
     if (!draggedTaskId || dragSource !== "braindump") return;
 
     const task = brainDump.find((t) => t.id === draggedTaskId);
-    if (task) {
-      promoteToTop3(task);
-    }
+    if (task) promoteToTop3(task);
     setDraggedTaskId(null);
     setDragSource(null);
   };
 
-  // Simpan Time Range ke kartu terpilih
   const applyTimeRange = (startTime: string, duration: number) => {
     if (!selectedTop3Id) return;
     const endTime = calculateEndTime(startTime, duration);
@@ -231,9 +205,7 @@ export default function App() {
 
   const resetTimer = () => {
     setIsRunning(false);
-    if (activeTask) {
-      setSecondsRemaining(activeTask.durationMinutes * 60);
-    }
+    if (activeTask) setSecondsRemaining(activeTask.durationMinutes * 60);
   };
 
   const formatTimer = (secs: number) => {
@@ -242,34 +214,34 @@ export default function App() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Redesigned Priority Indicator: Minimal Dot + Clean Label (Tanpa badge kotak tebal)
+  // Redesigned Priority Badge: Minimal Dot + Sans text sesuai design.md
   const renderPriorityBadge = (p: Priority) => {
     switch (p) {
       case "urgent":
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-red-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.2 rounded-[3px]">
+            <span className="w-1 h-1 rounded-full bg-red-400" />
             Urgent
           </span>
         );
       case "high":
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-orange-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.2 rounded-[3px]">
+            <span className="w-1 h-1 rounded-full bg-orange-400" />
             High
           </span>
         );
       case "medium":
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-amber-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-[3px]">
+            <span className="w-1 h-1 rounded-full bg-amber-400" />
             Med
           </span>
         );
       case "low":
         return (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-indigo-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded-[3px]">
+            <span className="w-1 h-1 rounded-full bg-indigo-400" />
             Low
           </span>
         );
@@ -281,14 +253,13 @@ export default function App() {
   const selectedTask = top3.find((t) => t.id === selectedTop3Id);
   const calculatedEndTime = calculateEndTime(customStartTime, customDuration);
 
-  // Mini calendar grid numbers (November 2026)
   const calendarDays = [
     { day: 26, isOtherMonth: true }, { day: 27, isOtherMonth: true }, { day: 28, isOtherMonth: true }, { day: 29, isOtherMonth: true }, { day: 30, isOtherMonth: true }, { day: 31, isOtherMonth: true }, { day: 1 },
     { day: 2 }, { day: 3 }, { day: 4 }, { day: 5 }, { day: 6 }, { day: 7 }, { day: 8 },
     { day: 9 }, { day: 10 }, { day: 11 }, { day: 12 }, { day: 13 }, { day: 14 }, { day: 15 },
     { day: 16 }, { day: 17 }, { day: 18 }, { day: 19 }, { day: 20 }, { day: 21 }, { day: 22 },
     { day: 23 }, { day: 24 }, { day: 25 }, { day: 26 }, { day: 27 }, { day: 28 }, { day: 29 },
-    { day: 30 }, { day: 1, isOtherMonth: true }, { day: 2, isOtherMonth: true }, { day: 3, isOtherMonth: true }, { day: 4, isOtherMonth: true }, { day: 5, isOtherMonth: true }, { day: 6, isOtherMonth: true }
+    { day: 30 }
   ];
 
   return (
@@ -302,15 +273,15 @@ export default function App() {
             raditya-rayhan
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
-          <span className="text-[#9EA3AE]">Timebox Daily</span>
+          <span className="text-[#9EA3AE]">Timebox</span>
         </div>
 
-        {/* Mini Active Timer status di Header */}
+        {/* Stopwatch Active Timer: SATU-SATUNYA TEMPAT FONT MONO DIIZINKAN */}
         <div className="flex items-center gap-2.5">
           {activeTask && (
             <div className="flex items-center gap-2 bg-[#1C1D1F] border border-white/[0.08] px-2.5 py-1 rounded-[4px] text-xs">
               <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-[#6B7280]"}`} />
-              <span className="font-sans font-medium text-[#F0F0F0] text-[12px] tabular-nums tracking-wide">{formatTimer(secondsRemaining)}</span>
+              <span className="font-mono font-medium text-[#F0F0F0] text-[12px]">{formatTimer(secondsRemaining)}</span>
               <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">{activeTask.title}</span>
               <button
                 onClick={toggleTimer}
@@ -337,24 +308,22 @@ export default function App() {
       {/* 2. Main 3-Column Working Board */}
       <main className="flex-1 flex pt-10 pb-20 w-full h-full overflow-hidden">
         
-        {/* KOLOM 1: Brain Dump (Staging Pool) */}
+        {/* KOLOM 1: Brain Dump */}
         <section className="w-76 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-[#9EA3AE]" />
               <span className="font-medium text-[#F0F0F0] text-12 font-sans">Brain Dump</span>
-              <span className="text-11 font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
+              <span className="text-[10px] font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
                 {brainDump.length}
               </span>
             </div>
-            <span className="text-11 text-[#6B7280] font-sans">Tarik ke Top 3</span>
           </div>
 
-          {/* List Task Brain Dump */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
             {brainDump.length === 0 ? (
               <div className="p-6 text-center text-12 text-[#6B7280] font-sans">
-                Isi kepala kosong. Ketik tugas di bar bawah lalu tekan Enter.
+                Kosong
               </div>
             ) : (
               brainDump.map((task) => (
@@ -373,14 +342,14 @@ export default function App() {
                     </div>
                     <button
                       onClick={() => promoteToTop3(task)}
-                      title="Klik untuk pindahkan ke Top 3"
-                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-11 font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[4px] transition cursor-pointer flex-shrink-0"
+                      title="Pindahkan ke Top 3"
+                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[3px] transition cursor-pointer flex-shrink-0"
                     >
                       Top 3 <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                   <div className="flex items-center justify-between pl-5 text-11 text-[#9EA3AE] font-sans">
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 font-sans text-[11px]">
                       <Clock className="w-3 h-3 text-[#6B7280]" />
                       {task.durationMinutes}m
                     </span>
@@ -408,11 +377,10 @@ export default function App() {
             <div className="flex items-center gap-1.5">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
               <span className="font-medium text-[#F0F0F0] text-12 font-sans">Top 3 Priorities</span>
-              <span className="text-11 font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
+              <span className="text-[10px] font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
                 {top3.length}/3
               </span>
             </div>
-            <span className="text-11 text-[#6B7280] font-sans">Klik kartu untuk set jam</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
@@ -425,18 +393,16 @@ export default function App() {
                 <div
                   key={index}
                   onClick={() => {
-                    if (task) {
-                      setSelectedTop3Id(task.id);
-                    }
+                    if (task) setSelectedTop3Id(task.id);
                   }}
-                  className={`min-h-[114px] rounded-[6px] transition-all p-3 flex flex-col justify-between cursor-pointer ${
+                  className={`min-h-[110px] rounded-[6px] transition-all p-3 flex flex-col justify-between cursor-pointer ${
                     task
                       ? task.completed
                         ? "bg-[#1C1D1F]/50 border border-white/[0.04] opacity-50"
                         : isTaskRunning
                         ? "border border-white/[0.1] border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] ring-1 ring-[#3F76FF]/20"
                         : isSelected
-                        ? "bg-[#212327] border border-white/[0.14] border-l-2 border-l-[#3F76FF] shadow-sm"
+                        ? "bg-[#212327] border border-white/[0.14] border-l-2 border-l-[#3F76FF]"
                         : "bg-[#1C1D1F] border border-white/[0.08] hover:bg-[#252629] hover:border-white/[0.12]"
                       : "border border-dashed border-white/[0.08] bg-[#151617]/50 flex items-center justify-center hover:border-white/[0.14]"
                   }`}
@@ -445,22 +411,14 @@ export default function App() {
                     <>
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider">
-                              Slot #{index + 1}
-                            </span>
-                            {isSelected && (
-                              <span className="text-[10px] font-sans text-[#3F76FF] bg-[#3F76FF]/10 px-1.5 py-0.2 rounded-[3px] border border-[#3F76FF]/25">
-                                Aktif Mengatur Waktu
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider">
+                            #{index + 1}
+                          </span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               demoteToBrainDump(task);
                             }}
-                            title="Kembalikan ke Brain Dump"
                             className="text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer p-0.5"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -476,13 +434,13 @@ export default function App() {
                           <Clock className="w-3 h-3 text-[#6B7280]" />
                           <span>{task.durationMinutes}m</span>
                           {task.scheduledTime ? (
-                            <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-[3px] flex items-center gap-1 text-[11px]">
+                            <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-[3px] flex items-center gap-1 text-[10px] font-sans">
                               <CalendarCheck2 className="w-3 h-3" />
                               {task.scheduledTime} - {task.scheduledEndTime || calculateEndTime(task.scheduledTime, task.durationMinutes)}
                             </span>
                           ) : (
-                            <span className="text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-[3px] text-[10px]">
-                              Pilih Range Jam
+                            <span className="text-[#6B7280] bg-white/[0.04] px-1.5 py-0.2 rounded-[3px] text-[10px] font-sans">
+                              Set Jam
                             </span>
                           )}
                         </div>
@@ -522,11 +480,8 @@ export default function App() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center text-12 text-[#6B7280] font-sans py-4">
-                      Slot #{index + 1} Kosong
-                      <div className="text-11 text-[#6B7280] mt-1">
-                        Drag task dari Brain Dump ke sini
-                      </div>
+                    <div className="text-center text-11 text-[#6B7280] font-sans py-4">
+                      Slot #{index + 1}
                     </div>
                   )}
                 </div>
@@ -535,15 +490,14 @@ export default function App() {
           </div>
         </section>
 
-        {/* KOLOM 3: Time Range Picker & Calendar Scheduler (Mengadopsi UI Referensi User) */}
+        {/* KOLOM 3: Time Range Picker (Clean & Minimalis) */}
         <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-[#9EA3AE]" />
-              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Time Range & Date Scheduler</span>
+              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Time Range</span>
               {selectedTask && (
-                <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08]">
-                  <span className="text-[#6B7280]">Target:</span>
+                <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08] font-sans">
                   <span className="text-[#3F76FF] font-medium truncate max-w-[180px]">
                     {selectedTask.title}
                   </span>
@@ -556,31 +510,22 @@ export default function App() {
                 onClick={() => unassignSchedule(selectedTask.id)}
                 className="text-11 text-red-400 hover:text-red-300 font-sans cursor-pointer transition flex items-center gap-1"
               >
-                <X className="w-3 h-3" /> Lepas Jadwal
+                <X className="w-3 h-3" /> Hapus Jam
               </button>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
             {!selectedTask ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
-                <Clock className="w-8 h-8 mb-3 text-[#525866]" />
-                <div className="text-13 font-medium text-[#F0F0F0] font-sans">Pilih Kartu di Kolom Top 3</div>
-                <p className="text-11 text-[#9EA3AE] mt-1 font-sans">
-                  Klik salah satu kartu prioritas untuk mengatur tanggal dan rentang jam mulai-selesai timebox.
-                </p>
+                <Clock className="w-7 h-7 mb-2 text-[#525866]" />
+                <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
               </div>
             ) : (
-              <div className="max-w-xl mx-auto space-y-6">
+              <div className="max-w-xl mx-auto space-y-4">
                 
-                {/* 1. Compact Mini Calendar (Kalender Kecil di Atas) */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-3 shadow-sm">
-                  <div className="flex items-center justify-between mb-2 text-11 font-sans">
-                    <span className="font-medium text-[#F0F0F0]">Pilih Tanggal</span>
-                    <span className="text-[#9EA3AE]">November 2026</span>
-                  </div>
-
-                  {/* Day Headers (Mo, Tu, We, Th, Fr, Sa, Su) */}
+                {/* 1. Compact Mini Calendar Strip */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[6px] p-2.5 shadow-sm">
                   <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-[#6B7280] font-sans mb-1">
                     <span>Mo</span>
                     <span>Tu</span>
@@ -591,8 +536,7 @@ export default function App() {
                     <span>Su</span>
                   </div>
 
-                  {/* Calendar Days Matrix (Compact) */}
-                  <div className="grid grid-cols-7 gap-1 text-center text-11 font-sans">
+                  <div className="grid grid-cols-7 gap-1 text-center font-sans">
                     {calendarDays.slice(7, 28).map((item, idx) => {
                       const isSelected = selectedDate === item.day;
                       const isToday = item.day === 15;
@@ -601,9 +545,9 @@ export default function App() {
                         <button
                           key={idx}
                           onClick={() => setSelectedDate(item.day)}
-                          className={`h-6 rounded-[3px] flex items-center justify-center transition cursor-pointer text-[11px] ${
+                          className={`h-6 rounded-[3px] flex items-center justify-center transition cursor-pointer text-[11px] font-sans ${
                             isSelected
-                              ? "bg-[#3F76FF] text-white font-semibold"
+                              ? "bg-[#3F76FF] text-white font-medium"
                               : isToday
                               ? "bg-white/[0.08] text-[#F0F0F0] border border-[#3F76FF]/40"
                               : "text-[#9EA3AE] hover:bg-white/[0.04] hover:text-[#F0F0F0]"
@@ -616,23 +560,19 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Large Time Slot Picker Grid (Area Jam Besar) */}
-                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
-                  <div className="flex items-center justify-between text-12 font-sans border-b border-white/[0.06] pb-2.5">
-                    <div>
-                      <span className="font-medium text-[#F0F0F0] text-13">Pilih Slot Jam Mulai</span>
-                      <div className="text-[11px] text-[#9EA3AE] mt-0.5">
-                        Rentang: <strong className="text-white font-mono">{customStartTime} - {calculatedEndTime}</strong> ({customDuration}m)
-                      </div>
-                    </div>
+                {/* 2. Grid Jam Besar */}
+                <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[6px] p-3.5 shadow-sm flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between text-12 font-sans border-b border-white/[0.06] pb-2">
+                    <span className="text-[#F0F0F0] font-sans text-12 font-medium">
+                      {customStartTime} - {calculatedEndTime} <span className="text-[#9EA3AE] text-11">({customDuration}m)</span>
+                    </span>
 
-                    {/* Preset Durasi Cepat */}
-                    <div className="flex items-center gap-1">
-                      {[15, 25, 30, 45, 60, 90].map((mins) => (
+                    <div className="flex items-center gap-1 font-sans">
+                      {[15, 25, 30, 45, 60].map((mins) => (
                         <button
                           key={mins}
                           onClick={() => setCustomDuration(mins)}
-                          className={`px-2 py-0.5 rounded-[3px] text-11 font-sans transition cursor-pointer ${
+                          className={`px-1.5 py-0.5 rounded-[3px] text-10 font-sans transition cursor-pointer ${
                             customDuration === mins
                               ? "bg-[#3F76FF] text-white font-medium"
                               : "bg-white/[0.04] text-[#9EA3AE] hover:bg-white/[0.08]"
@@ -644,8 +584,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Grid Besar Tombol Jam */}
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                  {/* Grid Jam (Sans font) */}
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 pt-1">
                     {TIME_OPTIONS.map((time) => {
                       const isCurrentSelected = customStartTime === time;
                       const isOccupiedByOther = top3.some(
@@ -660,31 +600,27 @@ export default function App() {
                             setCustomStartTime(time);
                             applyTimeRange(time, customDuration);
                           }}
-                          className={`h-11 rounded-[6px] border flex flex-col items-center justify-center transition cursor-pointer ${
+                          className={`h-9 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 ${
                             isCurrentSelected
-                              ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-md ring-2 ring-[#3F76FF]/30"
+                              ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-sm"
                               : isOccupiedByOther
                               ? "bg-white/[0.02] border-white/[0.04] text-[#525866] cursor-not-allowed line-through"
                               : "bg-[#161719] border-white/[0.08] text-[#D0D4DC] hover:border-white/[0.2] hover:bg-[#202226]"
                           }`}
                         >
-                          <span className="font-mono text-12 font-medium">{time}</span>
-                          <span className="text-[10px] font-sans opacity-70">
-                            {isOccupiedByOther ? "Terpakai" : isCurrentSelected ? "Aktif" : "Pilih"}
-                          </span>
+                          {time}
                         </button>
                       );
                     })}
                   </div>
 
-                  <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-11 font-sans text-[#9EA3AE]">
-                    <span>Klik slot jam untuk langsung mengunci timebox.</span>
+                  <div className="pt-2 border-t border-white/[0.04] flex items-center justify-end">
                     <button
                       onClick={() => applyTimeRange(customStartTime, customDuration)}
-                      className="px-3 py-1.5 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-11 transition cursor-pointer flex items-center gap-1 shadow-sm"
+                      className="px-3 py-1 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-11 font-sans transition cursor-pointer flex items-center gap-1"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      Terapkan {customStartTime} - {calculatedEndTime}
+                      Kunci {customStartTime} - {calculatedEndTime}
                     </button>
                   </div>
                 </div>
@@ -696,56 +632,41 @@ export default function App() {
 
       </main>
  
-      {/* 3. Floating Input Bar (Center-Bottom Sesuai Permintaan User) */}
+      {/* 3. Floating Input Bar (Slim Minimalis) */}
       <div className="fixed bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-full max-w-lg px-4">
         <form
           onSubmit={handleInputSubmit}
-          className="bg-[#1C1D1F] border border-white/[0.12] rounded-[8px] shadow-2xl p-2 flex flex-col gap-1.5 backdrop-blur-md focus-within:border-[#3F76FF] transition-all"
+          className="bg-[#1C1D1F] border border-white/[0.12] rounded-[6px] shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-md focus-within:border-[#3F76FF] transition-all"
         >
           <div className="flex items-center gap-2 px-1">
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Tulis tugas baru... ketik /30m untuk durasi atau @urgent untuk prioritas"
+              placeholder="Tulis tugas baru... /30m @urgent"
               className="flex-1 bg-transparent border-none text-12 text-[#F0F0F0] placeholder:text-[#525866] focus:outline-none font-sans"
             />
             <button
               type="submit"
               disabled={!inputValue.trim()}
-              className="w-6 h-6 rounded-[4px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
+              className="w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
             >
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3" />
             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-1 border-t border-white/[0.04] px-1 text-10 text-[#6B7280] font-sans">
-            <div className="flex items-center gap-1.5">
-              <span className="font-sans text-[10px] bg-white/[0.06] px-1.5 py-0.2 rounded text-[#9EA3AE]">
-                Enter
-              </span>
-              <span>masuk Brain Dump</span>
-            </div>
-            <div className="flex items-center gap-2 font-sans text-[10px]">
-              <span className="text-[#9EA3AE]">/25m /45m</span>
-              <span className="text-red-400">@urgent</span>
-              <span className="text-amber-400">@high</span>
-            </div>
           </div>
         </form>
       </div>
 
-      {/* 4. Hard Stop Evaluation Modal (Saat Timer Habis) */}
+      {/* 4. Hard Stop Evaluation Modal */}
       {hardStopDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C1D1F] border border-white/[0.12] w-full max-w-md rounded-[8px] p-5 shadow-2xl">
+          <div className="bg-[#1C1D1F] border border-white/[0.12] w-full max-w-md rounded-[6px] p-5 shadow-2xl">
             <div className="flex items-center gap-2 text-amber-400 mb-2">
-              <AlertCircle className="w-5 h-5" />
-              <h3 className="font-semibold text-14 text-[#F0F0F0] font-sans">Timebox Hard Stop!</h3>
+              <AlertCircle className="w-4 h-4" />
+              <h3 className="font-semibold text-13 text-[#F0F0F0] font-sans">Timebox Selesai</h3>
             </div>
             <p className="text-12 text-[#9EA3AE] mb-4 font-sans leading-relaxed">
-              Waktu alokasi untuk <strong className="text-[#F0F0F0]">"{hardStopDialog.title}"</strong> sudah habis. 
-              Sesuai aturan timebox: stop pekerjaan sekarang dan tentukan statusnya.
+              Waktu alokasi untuk <strong className="text-[#F0F0F0]">"{hardStopDialog.title}"</strong> habis.
             </p>
 
             <div className="flex items-center justify-end gap-2 text-11 font-sans">
@@ -757,7 +678,7 @@ export default function App() {
                 }}
                 className="px-3 py-1.5 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-[#F0F0F0] transition cursor-pointer"
               >
-                Belum Kelar (Jadwalkan Ulang)
+                Jadwalkan Ulang
               </button>
               <button
                 onClick={() => {
@@ -769,7 +690,7 @@ export default function App() {
                 }}
                 className="px-3 py-1.5 rounded-[4px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition cursor-pointer"
               >
-                Tandai Selesai
+                Selesai
               </button>
             </div>
           </div>
