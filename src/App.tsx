@@ -342,7 +342,7 @@ export default function App() {
       </header>
 
       {/* 2. Main 3-Column Working Board */}
-      <main className="flex-1 flex pt-10 pb-20 w-full h-full overflow-hidden">
+      <main className="flex-1 flex pt-10 pb-32 w-full h-full overflow-hidden">
         
         {/* KOLOM 1: Brain Dump */}
         <section
@@ -692,26 +692,45 @@ export default function App() {
 
       </main>
  
-      {/* 3. Floating Input Bar (Slim Minimalis) */}
-      <div className="fixed bottom-3.5 left-1/2 -translate-x-1/2 z-30 w-full max-w-lg px-4">
+      {/* 3. Floating Prompt Box (Berdiri Sendiri, Tinggi, & Elegan Tanpa Container Strip Gelap) */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-4 pointer-events-none">
         <form
           onSubmit={handleInputSubmit}
-          className="bg-[#1C1D1F] border border-white/[0.12] rounded-[6px] shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-md focus-within:border-[#3F76FF] transition-all"
+          className="pointer-events-auto bg-[#1C1D1F]/90 backdrop-blur-xl border border-white/[0.14] rounded-[12px] shadow-2xl p-3 flex flex-col justify-between min-h-[105px] focus-within:border-[#3F76FF] focus-within:ring-1 focus-within:ring-[#3F76FF]/30 transition-all"
         >
-          <div className="flex items-center gap-2 px-1">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Tulis tugas baru... /30m @urgent"
-              className="flex-1 bg-transparent border-none text-12 text-[#F0F0F0] placeholder:text-[#525866] focus:outline-none font-sans"
-            />
+          {/* Textarea Multi-line atau Text Input yang Lega */}
+          <textarea
+            value={inputValue}
+            rows={2}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleInputSubmit(e);
+              }
+            }}
+            placeholder="Tulis tugas baru untuk Brain Dump... ketik /30m untuk durasi atau @urgent"
+            className="w-full bg-transparent border-none text-13 text-[#F0F0F0] placeholder:text-[#6B7280] focus:outline-none resize-none font-sans leading-relaxed"
+          />
+
+          {/* Bottom Toolbar Box (Mirip Gambar 2) */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[11px] font-sans text-[#9EA3AE] bg-white/[0.04] hover:bg-white/[0.08] px-2 py-1 rounded-[4px] border border-white/[0.06] transition cursor-pointer">
+                <Clock className="w-3 h-3 text-[#6B7280]" />
+                30m default
+              </span>
+              <span className="text-[10px] text-[#6B7280] font-sans">
+                Enter kirim
+              </span>
+            </div>
+
             <button
               type="submit"
               disabled={!inputValue.trim()}
-              className="w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] active:scale-95 disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
+              className="w-7 h-7 rounded-full bg-[#3F76FF] hover:bg-[#3364DB] active:scale-95 disabled:opacity-20 disabled:hover:bg-[#3F76FF] text-white flex items-center justify-center transition cursor-pointer shadow-md"
             >
-              <ArrowRight className="w-3 h-3" />
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </form>
