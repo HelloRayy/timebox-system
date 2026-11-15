@@ -62,9 +62,12 @@ export default function App() {
   const [customStartTime, setCustomStartTime] = useState<string>("10:00");
   const [customDuration, setCustomDuration] = useState<number>(30);
 
+  // Micro-behavior Drag States
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
+  const [isDragOverBrainDump, setIsDragOverBrainDump] = useState<boolean>(false);
+  const [hoveredTimeSlot, setHoveredTimeSlot] = useState<string | null>(null);
 
   const [inputValue, setInputValue] = useState("");
   const inputDuration = 30;
@@ -82,6 +85,24 @@ export default function App() {
       setCustomDuration(task.durationMinutes);
     }
   }, [selectedTop3Id, top3]);
+
+  // Global Keyboard Shortcuts (Space = Play/Pause, Esc = Deselect)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Abaikan shortcut jika sedang mengetik di input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        toggleTimer();
+      } else if (e.code === "Escape") {
+        setSelectedTop3Id(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
 
   useEffect(() => {
     let interval: number | null = null;
@@ -152,6 +173,7 @@ export default function App() {
     if (selectedTop3Id === task.id) setSelectedTop3Id(null);
   };
 
+  // Two-way Drag and Drop handlers
   const handleDragStart = (task: TaskItem, source: "braindump" | "top3") => {
     setDraggedTaskId(task.id);
     setDragSource(source);
@@ -160,10 +182,25 @@ export default function App() {
   const handleDropOnTop3 = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOverTop3(false);
-    if (!draggedTaskId || dragSource !== "braindump") return;
+    if (!draggedTaskId) return;
 
-    const task = brainDump.find((t) => t.id === draggedTaskId);
-    if (task) promoteToTop3(task);
+    if (dragSource === "braindump") {
+      const task = brainDump.find((t) => t.id === draggedTaskId);
+      if (task) promoteToTop3(task);
+    }
+    setDraggedTaskId(null);
+    setDragSource(null);
+  };
+
+  const handleDropOnBrainDump = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverBrainDump(false);
+    if (!draggedTaskId) return;
+
+    if (dragSource === "top3") {
+      const task = top3.find((t) => t.id === draggedTaskId);
+      if (task) demoteToBrainDump(task);
+    }
     setDraggedTaskId(null);
     setDragSource(null);
   };
@@ -214,7 +251,6 @@ export default function App() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Redesigned Priority Badge: Minimal Dot + Sans text sesuai design.md
   const renderPriorityBadge = (p: Priority) => {
     switch (p) {
       case "urgent":
@@ -285,7 +321,7 @@ export default function App() {
               <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">{activeTask.title}</span>
               <button
                 onClick={toggleTimer}
-                title={isRunning ? "Pause" : "Play"}
+                title={isRunning ? "Pause (Space)" : "Play (Space)"}
                 className="ml-1 text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
               >
                 {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
@@ -309,7 +345,17 @@ export default function App() {
       <main className="flex-1 flex pt-10 pb-20 w-full h-full overflow-hidden">
         
         {/* KOLOM 1: Brain Dump */}
-        <section className="w-76 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0">
+        <section
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (dragSource === "top3") setIsDragOverBrainDump(true);
+          }}
+          onDragLeave={() => setIsDragOverBrainDump(false)}
+          onDrop={handleDropOnBrainDump}
+          className={`w-76 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0 transition-all ${
+            isDragOverBrainDump ? "bg-[#201c1f]/40 border-r-[#F87171]/50" : ""
+          }`}
+        >
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-[#9EA3AE]" />
@@ -326,37 +372,42 @@ export default function App() {
                 Kosong
               </div>
             ) : (
-              brainDump.map((task) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={() => handleDragStart(task, "braindump")}
-                  className="group p-2.5 rounded-[6px] border border-white/[0.08] bg-[#1C1D1F] hover:bg-[#252629] hover:border-white/[0.14] transition-all cursor-grab active:cursor-grabbing flex flex-col gap-1.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-1.5 min-w-0">
-                      <GripVertical className="w-3.5 h-3.5 text-[#6B7280] group-hover:text-[#9EA3AE] flex-shrink-0 mt-0.5" />
-                      <span className="text-13 font-sans text-[#F0F0F0] leading-snug line-clamp-2">
-                        {task.title}
-                      </span>
+              brainDump.map((task) => {
+                const isDraggingThis = draggedTaskId === task.id;
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(task, "braindump")}
+                    className={`group p-2.5 rounded-[6px] border border-white/[0.08] bg-[#1C1D1F] hover:bg-[#252629] hover:border-white/[0.14] transition-all cursor-grab active:cursor-grabbing flex flex-col gap-1.5 ${
+                      isDraggingThis ? "opacity-30 scale-95" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5 min-w-0">
+                        <GripVertical className="w-3.5 h-3.5 text-[#6B7280] group-hover:text-[#9EA3AE] flex-shrink-0 mt-0.5" />
+                        <span className="text-13 font-sans text-[#F0F0F0] leading-snug line-clamp-2">
+                          {task.title}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => promoteToTop3(task)}
+                        title="Pindahkan ke Top 3"
+                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[3px] transition cursor-pointer flex-shrink-0"
+                      >
+                        Top 3 <ArrowRight className="w-3 h-3" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => promoteToTop3(task)}
-                      title="Pindahkan ke Top 3"
-                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[3px] transition cursor-pointer flex-shrink-0"
-                    >
-                      Top 3 <ArrowRight className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center justify-between pl-5 text-11 text-[#9EA3AE] font-sans">
+                      <span className="flex items-center gap-1 font-sans text-[11px]">
+                        <Clock className="w-3 h-3 text-[#6B7280]" />
+                        {task.durationMinutes}m
+                      </span>
+                      {renderPriorityBadge(task.priority)}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between pl-5 text-11 text-[#9EA3AE] font-sans">
-                    <span className="flex items-center gap-1 font-sans text-[11px]">
-                      <Clock className="w-3 h-3 text-[#6B7280]" />
-                      {task.durationMinutes}m
-                    </span>
-                    {renderPriorityBadge(task.priority)}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
@@ -365,12 +416,12 @@ export default function App() {
         <section
           onDragOver={(e) => {
             e.preventDefault();
-            setIsDragOverTop3(true);
+            if (dragSource === "braindump") setIsDragOverTop3(true);
           }}
           onDragLeave={() => setIsDragOverTop3(false)}
           onDrop={handleDropOnTop3}
-          className={`w-80 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-colors ${
-            isDragOverTop3 ? "bg-[#1E2333]/30 border-l border-l-[#3F76FF]" : ""
+          className={`w-80 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-all ${
+            isDragOverTop3 ? "bg-[#1E2333]/40 border-l border-l-[#3F76FF]" : ""
           }`}
         >
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
@@ -388,16 +439,21 @@ export default function App() {
               const task = top3[index];
               const isSelected = task && selectedTop3Id === task.id;
               const isTaskRunning = task && activeTask?.id === task.id && isRunning;
+              const isDraggingThis = task && draggedTaskId === task.id;
 
               return (
                 <div
                   key={index}
+                  draggable={!!task}
+                  onDragStart={() => task && handleDragStart(task, "top3")}
                   onClick={() => {
                     if (task) setSelectedTop3Id(task.id);
                   }}
                   className={`min-h-[110px] rounded-[6px] transition-all p-3 flex flex-col justify-between cursor-pointer ${
                     task
-                      ? task.completed
+                      ? isDraggingThis
+                        ? "opacity-30 scale-95"
+                        : task.completed
                         ? "bg-[#1C1D1F]/50 border border-white/[0.04] opacity-50"
                         : isTaskRunning
                         ? "border border-white/[0.1] border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] ring-1 ring-[#3F76FF]/20"
@@ -411,7 +467,8 @@ export default function App() {
                     <>
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider">
+                          <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                            <GripVertical className="w-3 h-3 text-[#6B7280] cursor-grab" />
                             #{index + 1}
                           </span>
                           <button
@@ -490,7 +547,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* KOLOM 3: Time Range Picker (Clean & Minimalis) */}
+        {/* KOLOM 3: Time Range Picker */}
         <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
           <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -560,11 +617,12 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Grid Jam Besar */}
+                {/* 2. Grid Jam Besar dengan Micro-Behavior Live Preview */}
                 <div className="bg-[#1C1D1F] border border-white/[0.08] rounded-[6px] p-3.5 shadow-sm flex flex-col gap-2.5">
                   <div className="flex items-center justify-between text-12 font-sans border-b border-white/[0.06] pb-2">
                     <span className="text-[#F0F0F0] font-sans text-12 font-medium">
-                      {customStartTime} - {calculatedEndTime} <span className="text-[#9EA3AE] text-11">({customDuration}m)</span>
+                      {hoveredTimeSlot || customStartTime} - {calculateEndTime(hoveredTimeSlot || customStartTime, customDuration)} 
+                      <span className="text-[#9EA3AE] text-11 ml-1.5">({customDuration}m)</span>
                     </span>
 
                     <div className="flex items-center gap-1 font-sans">
@@ -596,11 +654,13 @@ export default function App() {
                         <button
                           key={time}
                           disabled={isOccupiedByOther}
+                          onMouseEnter={() => !isOccupiedByOther && setHoveredTimeSlot(time)}
+                          onMouseLeave={() => setHoveredTimeSlot(null)}
                           onClick={() => {
                             setCustomStartTime(time);
                             applyTimeRange(time, customDuration);
                           }}
-                          className={`h-9 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 ${
+                          className={`h-9 rounded-[4px] border flex items-center justify-center transition cursor-pointer font-sans text-11 active:scale-95 ${
                             isCurrentSelected
                               ? "bg-[#3F76FF] border-[#3F76FF] text-white font-medium shadow-sm"
                               : isOccupiedByOther
@@ -617,7 +677,7 @@ export default function App() {
                   <div className="pt-2 border-t border-white/[0.04] flex items-center justify-end">
                     <button
                       onClick={() => applyTimeRange(customStartTime, customDuration)}
-                      className="px-3 py-1 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-11 font-sans transition cursor-pointer flex items-center gap-1"
+                      className="px-3 py-1 rounded-[4px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-95 text-white font-medium text-11 font-sans transition cursor-pointer flex items-center gap-1 shadow-sm"
                     >
                       <Check className="w-3.5 h-3.5" />
                       Kunci {customStartTime} - {calculatedEndTime}
@@ -649,7 +709,7 @@ export default function App() {
             <button
               type="submit"
               disabled={!inputValue.trim()}
-              className="w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
+              className="w-5 h-5 rounded-[3px] bg-[#3F76FF] text-white flex items-center justify-center hover:bg-[#3364DB] active:scale-95 disabled:opacity-30 disabled:hover:bg-[#3F76FF] transition cursor-pointer flex-shrink-0"
             >
               <ArrowRight className="w-3 h-3" />
             </button>
@@ -676,7 +736,7 @@ export default function App() {
                   setHardStopDialog(null);
                   setActiveTask(null);
                 }}
-                className="px-3 py-1.5 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-[#F0F0F0] transition cursor-pointer"
+                className="px-3 py-1.5 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] active:scale-95 text-[#F0F0F0] transition cursor-pointer"
               >
                 Jadwalkan Ulang
               </button>
@@ -688,7 +748,7 @@ export default function App() {
                   setHardStopDialog(null);
                   setActiveTask(null);
                 }}
-                className="px-3 py-1.5 rounded-[4px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition cursor-pointer"
+                className="px-3 py-1.5 rounded-[4px] bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-medium transition cursor-pointer"
               >
                 Selesai
               </button>
