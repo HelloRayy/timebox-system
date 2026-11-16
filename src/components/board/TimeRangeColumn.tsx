@@ -1,9 +1,21 @@
-import React from "react";
-import { Calendar, Clock, X, Timer, Play, Pause, RotateCcw } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Calendar,
+  Clock,
+  X,
+  Play,
+  Pause,
+  RotateCcw,
+  Settings,
+  Eye,
+  Plus,
+  Minus,
+  Check,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TaskItem } from "@/types/task";
-import { formatTimer, getCurrentTime12, formatTo24HourString, calculateEndTime } from "@/lib/time";
+import { formatTimer, calculateEndTime } from "@/lib/time";
 
 export interface TimeRangeColumnProps {
   selectedTask: TaskItem | null | undefined;
@@ -30,13 +42,7 @@ export const TimeRangeColumn: React.FC<TimeRangeColumnProps> = ({
   activeTask,
   isRunning,
   secondsRemaining,
-  selectedHour,
-  selectedMinute,
-  selectedPeriod,
   customDuration,
-  onSetHour,
-  onSetMinute,
-  onSetPeriod,
   onSetDuration,
   onApplyTimeRange,
   onUnassignSchedule,
@@ -44,25 +50,33 @@ export const TimeRangeColumn: React.FC<TimeRangeColumnProps> = ({
   onResetTimer,
   onStartFocus,
 }) => {
-  const formattedStartTime = formatTo24HourString(selectedHour, selectedMinute, selectedPeriod);
-  const calculatedEndTime = calculateEndTime(formattedStartTime, customDuration);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const setTimeToCurrent = () => {
-    const cur = getCurrentTime12();
-    onSetHour(cur.hour);
-    onSetMinute(cur.minute);
-    onSetPeriod(cur.period);
-  };
+  // SVG Circular Ring Constants
+  const size = 230;
+  const strokeWidth = 9;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  // Hitung persentase durasi tersisa
+  const totalSeconds = (selectedTask?.durationMinutes || customDuration || 25) * 60;
+  const currentSeconds =
+    activeTask?.id === selectedTask?.id ? secondsRemaining : customDuration * 60;
+
+  // Progress berkurang seiring berjalannya countdown (0 saat habis, 1 saat penuh)
+  const progress = totalSeconds > 0 ? Math.max(0, Math.min(1, currentSeconds / totalSeconds)) : 0;
+  const strokeDashoffset = circumference * (1 - progress);
 
   return (
     <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
+      {/* Header Kolom */}
       <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="w-3.5 h-3.5 text-[#9EA3AE]" />
-          <span className="font-medium text-[#F0F0F0] text-12 font-sans">Time Range</span>
+          <span className="font-medium text-[#F0F0F0] text-12 font-sans">Focus Timer</span>
           {selectedTask && (
             <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08] font-sans">
-              <span className="text-[#3F76FF] font-medium truncate max-w-[180px]">
+              <span className="text-[#3F76FF] font-medium truncate max-w-[170px]">
                 {selectedTask.title}
               </span>
             </div>
@@ -79,258 +93,234 @@ export const TimeRangeColumn: React.FC<TimeRangeColumnProps> = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-32">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-32 flex flex-col items-center justify-center">
         {!selectedTask ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
             <Clock className="w-7 h-7 mb-2 text-[#525866]" />
             <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
             <div className="text-11 text-[#6B7280] font-sans mt-1">
-              Klik salah satu tugas di Top 3 untuk mengatur alokasi waktu fokus
+              Pilih salah satu tugas dari Top 3 untuk memulai sesi fokus Timebox
             </div>
           </div>
         ) : (
-          <div className="max-w-[340px] mx-auto space-y-3">
-            {/* 1. Card Timer Picker & Duration */}
-            <Card className="p-4 shadow-xl flex flex-col items-center border-white/[0.08] bg-[#1C1D1F] rounded-[14px]">
-              {/* Header Time Card dengan tombol Set Jam Sekarang */}
-              <div className="w-full flex items-center justify-between mb-3 pb-2 border-b border-white/[0.06]">
-                <span className="text-13 font-medium text-[#F0F0F0] font-sans">Mulai Dari</span>
-                <button
-                  onClick={setTimeToCurrent}
-                  className="text-[11px] text-[#3F76FF] hover:text-[#5B8CFF] font-sans transition cursor-pointer flex items-center gap-1"
-                >
-                  <Clock className="w-3 h-3" /> Jam Sekarang
-                </button>
+          <Card className="relative w-full max-w-[340px] p-6 shadow-2xl flex flex-col items-center border-white/[0.08] bg-[#1C1D1F] rounded-[24px] overflow-hidden transition-all">
+            
+            {/* Header Mini Kartu Focus */}
+            <div className="w-full flex items-center justify-between mb-4">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#3F76FF]" />
+                <span className="text-11 font-medium tracking-wide uppercase text-[#9EA3AE] font-sans">
+                  Timebox Focus
+                </span>
               </div>
+              <button
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                title="Pengaturan Durasi"
+                className={`p-1.5 rounded-[6px] border transition cursor-pointer ${
+                  isSettingsOpen
+                    ? "bg-[#3F76FF]/20 border-[#3F76FF]/40 text-[#3F76FF]"
+                    : "bg-white/[0.04] border-white/[0.08] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.08]"
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-              {/* Vertical Time Drum / Wheel Simulator */}
-              <div className="relative w-full flex flex-col items-center justify-center py-1 select-none">
-                {/* Faded Row Atas (Preview -1) */}
-                <div className="flex items-center justify-center gap-6 text-[#525866] text-11 font-sans py-0.5 opacity-40">
-                  <span className="w-8 text-center">{selectedHour === 1 ? 12 : selectedHour - 1}</span>
-                  <span className="text-[#525866]">:</span>
-                  <span className="w-8 text-center">
-                    {selectedMinute === 0 ? "45" : (selectedMinute - 15).toString().padStart(2, "0")}
-                  </span>
-                  <span className="w-8 text-center">{selectedPeriod === "am" ? "pm" : "am"}</span>
-                </div>
+            {/* Circular Progress Ring Area */}
+            <div className="relative flex items-center justify-center my-3 select-none">
+              <svg width={size} height={size} className="transform -rotate-90">
+                <defs>
+                  {/* Gradien Aksen Halus Sesuai Palet Plane / Crimson Ring */}
+                  <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3F76FF" />
+                    <stop offset="100%" stopColor="#5B8CFF" />
+                  </linearGradient>
+                </defs>
 
-                {/* Active Selected Row */}
-                <div className="flex items-center justify-center gap-4 bg-white/[0.06] border border-white/[0.08] rounded-[10px] py-1.5 px-6 my-1 w-full shadow-inner">
-                  <button
-                    onClick={() => onSetHour((prev) => (prev % 12) + 1)}
-                    className="w-10 text-center text-18 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
-                    title="Klik untuk ubah jam"
-                  >
-                    {selectedHour}
-                  </button>
+                {/* Background Ring Track */}
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="rgba(255, 255, 255, 0.05)"
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                />
 
-                  <span className="text-16 font-bold text-[#9EA3AE]">:</span>
+                {/* Animated Dynamic Progress Stroke */}
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="url(#ringGradient)"
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="none"
+                  className="transition-[stroke-dashoffset] duration-700 ease-linear"
+                />
+              </svg>
 
-                  <button
-                    onClick={() => onSetMinute((prev) => (prev + 5) % 60)}
-                    className="w-10 text-center text-18 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
-                    title="Klik untuk ubah menit (+5m)"
-                  >
-                    {selectedMinute.toString().padStart(2, "0")}
-                  </button>
+              {/* Konten Tengah Lingkaran Ring */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                {/* Icon Eye Minimalis Khas Referensi */}
+                <Eye className="w-5 h-5 text-[#9EA3AE] mb-2 opacity-80" />
 
-                  <button
-                    onClick={() => onSetPeriod((prev) => (prev === "am" ? "pm" : "am"))}
-                    className="w-10 text-center text-14 font-medium text-[#9EA3AE] hover:text-[#3F76FF] uppercase transition cursor-pointer"
-                    title="Klik untuk ganti AM / PM"
-                  >
-                    {selectedPeriod}
-                  </button>
-                </div>
-
-                {/* Faded Row Bawah (Preview +1) */}
-                <div className="flex items-center justify-center gap-6 text-[#525866] text-11 font-sans py-0.5 opacity-40">
-                  <span className="w-8 text-center">{selectedHour === 12 ? 1 : selectedHour + 1}</span>
-                  <span className="text-[#525866]">:</span>
-                  <span className="w-8 text-center">
-                    {(selectedMinute + 15) % 60 === 0
-                      ? "00"
-                      : ((selectedMinute + 15) % 60).toString().padStart(2, "0")}
-                  </span>
-                  <span className="w-8 text-center">{selectedPeriod}</span>
-                </div>
-              </div>
-
-              {/* Shortcuts Jam Cepat */}
-              <div className="w-full mt-2 pt-2 border-t border-white/[0.04]">
-                <div className="text-[10px] text-[#6B7280] font-sans mb-1 text-left">Shortcut Jam:</div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { h: 9, m: 0, p: "am", label: "9 am" },
-                    { h: 12, m: 0, p: "pm", label: "12 pm" },
-                    { h: 4, m: 0, p: "pm", label: "4 pm" },
-                    { h: 7, m: 0, p: "pm", label: "7 pm" },
-                  ].map((item) => {
-                    const isActivePreset =
-                      selectedHour === item.h &&
-                      selectedMinute === item.m &&
-                      selectedPeriod === item.p;
-
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          onSetHour(item.h);
-                          onSetMinute(item.m);
-                          onSetPeriod(item.p as "am" | "pm");
-                        }}
-                        className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
-                          isActivePreset
-                            ? "bg-white/[0.08] border-[#3F76FF] text-[#3F76FF] font-medium"
-                            : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Pilihan & Tambah Durasi Pengerjaan */}
-              <div className="w-full mt-2.5 pt-2.5 border-t border-white/[0.04]">
-                <div className="flex items-center justify-between text-[11px] font-sans mb-1.5">
-                  <span className="text-[#9EA3AE]">Mau fokus berapa lama:</span>
-                  <span className="text-emerald-400 font-medium">{customDuration} menit</span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-1 mb-2">
-                  {[15, 25, 30, 45, 60].map((mins) => (
-                    <button
-                      key={mins}
-                      onClick={() => onSetDuration(mins)}
-                      className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
-                        customDuration === mins
-                          ? "bg-[#3F76FF] text-white font-medium border-[#3F76FF]"
-                          : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0]"
-                      }`}
-                    >
-                      {mins}m
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between gap-1.5 pt-1 text-[11px] text-[#6B7280]">
-                  <span className="text-[10px]">Tambah durasi:</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onSetDuration((prev) => prev + 5)}
-                      className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                    >
-                      +5m
-                    </button>
-                    <button
-                      onClick={() => onSetDuration((prev) => prev + 15)}
-                      className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                    >
-                      +15m
-                    </button>
-                    <button
-                      onClick={() => onSetDuration((prev) => Math.max(5, prev - 10))}
-                      className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                    >
-                      -10m
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tombol Kunci Jadwal */}
-              <div className="w-full mt-3">
-                <Button
-                  onClick={() => onApplyTimeRange(formattedStartTime, customDuration)}
-                  className="w-full h-9 rounded-[6px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-[0.98] text-white font-medium text-12 shadow-md transition"
-                >
-                  Kunci Jadwal ({formattedStartTime} - {calculatedEndTime})
-                </Button>
-              </div>
-            </Card>
-
-            {/* 2. Live Countdown Focus Card */}
-            <Card className="p-4 shadow-xl border border-white/[0.08] bg-[#1C1D1F] rounded-[14px]">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 text-12 font-medium text-[#F0F0F0] font-sans">
-                  <Timer className="w-3.5 h-3.5 text-[#3F76FF]" />
-                  <span>Focus Countdown</span>
-                </div>
-                {activeTask?.id === selectedTask.id && (
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      isRunning ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                    }`}
-                  />
-                )}
-              </div>
-
-              <div className="flex flex-col items-center justify-center py-3 bg-[#131415]/70 rounded-[10px] border border-white/[0.06]">
-                <div className="font-mono text-32 font-bold tracking-wider text-[#F0F0F0]">
+                {/* Angka Countdown Besar (Wajib Monospace sesuai design.md) */}
+                <div className="font-mono text-38 font-semibold tracking-tight text-[#F0F0F0] leading-none mb-2">
                   {activeTask?.id === selectedTask.id
                     ? formatTimer(secondsRemaining)
                     : formatTimer(customDuration * 60)}
                 </div>
-                <div className="text-11 text-[#6B7280] font-sans mt-0.5 truncate max-w-[240px]">
-                  {activeTask?.id === selectedTask.id
-                    ? isRunning
-                      ? "Sedang berjalan..."
-                      : "Timer dijeda"
-                    : `Target alokasi: ${customDuration} menit`}
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 mt-3">
-                {activeTask?.id === selectedTask.id ? (
-                  <>
-                    <Button
-                      onClick={onToggleTimer}
-                      className={`flex-1 h-9 rounded-[6px] font-medium text-12 transition ${
-                        isRunning
-                          ? "bg-amber-500 hover:bg-amber-600 text-black"
-                          : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                      }`}
-                    >
-                      {isRunning ? (
-                        <span className="flex items-center gap-1.5">
-                          <Pause className="w-3.5 h-3.5" /> Jeda Fokus
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5">
-                          <Play className="w-3.5 h-3.5" /> Lanjutkan
-                        </span>
-                      )}
-                    </Button>
-                    <button
-                      onClick={onResetTimer}
-                      title="Reset Timer"
-                      className="h-9 px-3 rounded-[6px] bg-white/[0.04] hover:bg-white/[0.08] text-[#9EA3AE] hover:text-[#F0F0F0] border border-white/[0.06] transition cursor-pointer flex items-center justify-center"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      onApplyTimeRange(formattedStartTime, customDuration);
-                      onStartFocus({
-                        ...selectedTask,
-                        durationMinutes: customDuration,
-                        scheduledTime: formattedStartTime,
-                        scheduledEndTime: calculatedEndTime,
-                      });
-                    }}
-                    className="w-full h-9 rounded-[6px] bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-medium text-12 shadow transition flex items-center justify-center gap-1.5"
-                  >
-                    <Play className="w-3.5 h-3.5" /> Mulai Fokus Sekarang
-                  </Button>
-                )}
+                {/* Label Status Bawah */}
+                <span className="text-[11px] font-sans uppercase tracking-widest text-[#6B7280] font-medium">
+                  {activeTask?.id === selectedTask.id && isRunning ? "Focusing" : "Focus Session"}
+                </span>
+
+                {/* Indikator Alokasi Waktu Selesai */}
+                <span className="text-[10px] text-[#525866] font-sans mt-1">
+                  {customDuration}m target
+                </span>
               </div>
-            </Card>
-          </div>
+            </div>
+
+            {/* Bottom Controls Bar (Reset, Start/Pause, Settings) */}
+            <div className="w-full flex items-center justify-center gap-3 mt-4 pt-3 border-t border-white/[0.04]">
+              {/* Tombol Reset Timer */}
+              <button
+                onClick={onResetTimer}
+                title="Reset Timer"
+                className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-[#9EA3AE] hover:text-[#F0F0F0] flex items-center justify-center transition active:scale-95 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+
+              {/* Tombol Utama Start / Pause berbentuk Pill Lebar Elegan */}
+              {activeTask?.id === selectedTask.id ? (
+                <Button
+                  onClick={onToggleTimer}
+                  className={`min-w-[130px] h-11 rounded-full font-medium text-13 px-6 shadow-lg transition active:scale-95 cursor-pointer ${
+                    isRunning
+                      ? "bg-white/[0.08] border border-white/[0.12] hover:bg-white/[0.12] text-[#F0F0F0]"
+                      : "bg-[#3F76FF] hover:bg-[#3364DB] text-white"
+                  }`}
+                >
+                  {isRunning ? (
+                    <span className="flex items-center gap-2">
+                      <Pause className="w-4 h-4" /> PAUSE
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Play className="w-4 h-4 ml-0.5" /> RESUME
+                    </span>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    const now = new Date();
+                    const startStr = `${now.getHours().toString().padStart(2, "0")}:${now
+                      .getMinutes()
+                      .toString()
+                      .padStart(2, "0")}`;
+                    const endStr = calculateEndTime(startStr, customDuration);
+
+                    onApplyTimeRange(startStr, customDuration);
+                    onStartFocus({
+                      ...selectedTask,
+                      durationMinutes: customDuration,
+                      scheduledTime: startStr,
+                      scheduledEndTime: endStr,
+                    });
+                  }}
+                  className="min-w-[130px] h-11 rounded-full bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-13 px-6 shadow-lg transition active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  <Play className="w-4 h-4 ml-0.5" /> START
+                </Button>
+              )}
+
+              {/* Tombol Toggle Setting */}
+              <button
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                title="Atur Durasi Sesi"
+                className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-[#9EA3AE] hover:text-[#F0F0F0] flex items-center justify-center transition active:scale-95 cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Presets Durasi di Bawah Tombol Utama */}
+            <div className="w-full grid grid-cols-4 gap-1.5 mt-3 pt-2">
+              {[15, 25, 45, 60].map((mins) => (
+                <button
+                  key={mins}
+                  onClick={() => onSetDuration(mins)}
+                  className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
+                    customDuration === mins
+                      ? "bg-[#3F76FF] text-white font-medium border-[#3F76FF]"
+                      : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {mins}m
+                </button>
+              ))}
+            </div>
+
+            {/* Modal / Overlay Drawer Settings Durasi Sesuai Referensi Gambar */}
+            {isSettingsOpen && (
+              <div className="absolute inset-0 bg-[#1C1D1F]/95 backdrop-blur-md z-20 p-5 flex flex-col justify-between animate-in fade-in zoom-in-95 duration-150">
+                <div>
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                    <span className="font-semibold text-13 text-[#F0F0F0] font-sans">
+                      Focus Duration Settings
+                    </span>
+                    <button
+                      onClick={() => setIsSettingsOpen(false)}
+                      className="p-1 rounded-full hover:bg-white/[0.08] text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Pengatur Durasi +/- Sesuai Gambar Referensi Kanan Bawah */}
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <span className="text-11 text-[#9EA3AE] font-sans mb-3">Focus Session</span>
+                    <div className="flex items-center gap-6">
+                      <button
+                        onClick={() => onSetDuration((prev) => Math.max(5, prev - 5))}
+                        className="w-10 h-10 rounded-full border border-white/[0.1] bg-[#161719] hover:bg-white/[0.06] flex items-center justify-center text-[#F0F0F0] transition cursor-pointer"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+
+                      <div className="flex flex-col items-center">
+                        <span className="font-mono text-32 font-bold text-[#F0F0F0]">
+                          {customDuration}
+                        </span>
+                        <span className="text-[11px] text-[#6B7280] font-sans">min</span>
+                      </div>
+
+                      <button
+                        onClick={() => onSetDuration((prev) => Math.min(180, prev + 5))}
+                        className="w-10 h-10 rounded-full border border-white/[0.1] bg-[#161719] hover:bg-white/[0.06] flex items-center justify-center text-[#F0F0F0] transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="w-full h-9 rounded-[6px] bg-[#3F76FF] hover:bg-[#3364DB] text-white font-medium text-12 shadow flex items-center justify-center gap-1.5 transition"
+                >
+                  <Check className="w-3.5 h-3.5" /> Selesai
+                </Button>
+              </div>
+            )}
+          </Card>
         )}
       </div>
     </section>
