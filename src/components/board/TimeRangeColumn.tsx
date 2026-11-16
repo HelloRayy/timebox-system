@@ -167,8 +167,8 @@ export const TimeRangeColumn: React.FC<TimeRangeColumnProps> = ({
                 {/* Icon Eye Minimalis Khas Referensi */}
                 <Eye className="w-5 h-5 text-[#9EA3AE] mb-2 opacity-80" />
 
-                {/* Angka Countdown Besar (Wajib Monospace sesuai design.md) */}
-                <div className="font-mono text-38 font-semibold tracking-tight text-[#F0F0F0] leading-none mb-2">
+                {/* Angka Countdown Besar */}
+                <div className="font-sans text-38 font-semibold tracking-tight text-[#F0F0F0] leading-none mb-2 tabular-nums">
                   {activeTask?.id === selectedTask.id
                     ? formatTimer(secondsRemaining)
                     : formatTimer(customDuration * 60)}
@@ -296,7 +296,7 @@ export const TimeRangeColumn: React.FC<TimeRangeColumnProps> = ({
                       </button>
 
                       <div className="flex flex-col items-center">
-                        <span className="font-mono text-32 font-bold text-[#F0F0F0]">
+                        <span className="font-sans text-32 font-bold text-[#F0F0F0] tabular-nums">
                           {customDuration}
                         </span>
                         <span className="text-[11px] text-[#6B7280] font-sans">min</span>

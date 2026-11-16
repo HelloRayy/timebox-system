@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
         <span className="text-[#9EA3AE]">Timebox</span>
       </div>
 
-      {/* Stopwatch Active Timer: Font mono khusus untuk timer sesuai design.md */}
+      {/* Stopwatch Active Timer */}
       <div className="flex items-center gap-2.5">
         {activeTask && (
           <div className="flex items-center gap-2 bg-[#1C1D1F] border border-white/[0.08] px-2.5 py-1 rounded-[4px] text-xs">
@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
                 isRunning ? "bg-emerald-400 animate-pulse" : "bg-[#6B7280]"
               }`}
             />
-            <span className="font-mono font-medium text-[#F0F0F0] text-[12px]">
+            <span className="font-sans font-medium text-[#F0F0F0] text-[12px] tabular-nums">
               {formatTimer(secondsRemaining)}
             </span>
             <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">
