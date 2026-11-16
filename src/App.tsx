@@ -1,47 +1,21 @@
 import React, { useState, useEffect } from "react";
-import {
-  Sparkles,
-  Calendar,
-  Clock,
-  ArrowRight,
-  Play,
-  Pause,
-  RotateCcw,
-  CheckCircle2,
-  AlertCircle,
-  ChevronRight,
-  Flame,
-  X,
-  GripVertical,
-  CalendarCheck2,
-  Timer
-} from "lucide-react";
 import "./App.css";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 
-export type Priority = "urgent" | "high" | "medium" | "low" | "none";
+// Modular Types & Utilities
+import { TaskItem, Priority, DragSource } from "@/types/task";
+import { getCurrentTime12, calculateEndTime } from "@/lib/time";
+import { useTimeboxTimer } from "@/hooks/useTimeboxTimer";
 
-export interface TaskItem {
-  id: string;
-  title: string;
-  durationMinutes: number;
-  priority: Priority;
-  completed: boolean;
-  scheduledTime?: string;
-  scheduledEndTime?: string;
-}
-
-const calculateEndTime = (start: string, durationMin: number) => {
-  const [h, m] = start.split(":").map(Number);
-  const totalMin = h * 60 + m + durationMin;
-  const endH = Math.floor(totalMin / 60) % 24;
-  const endM = totalMin % 60;
-  return `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
-};
+// Modular Components
+import { Header } from "@/components/layout/Header";
+import { FloatingPromptBar } from "@/components/layout/FloatingPromptBar";
+import { BrainDumpColumn } from "@/components/board/BrainDumpColumn";
+import { Top3Column } from "@/components/board/Top3Column";
+import { TimeRangeColumn } from "@/components/board/TimeRangeColumn";
+import { HardStopDialog } from "@/components/dialogs/HardStopDialog";
 
 export default function App() {
+  // 1. Data State (Brain Dump & Top 3)
   const [brainDump, setBrainDump] = useState<TaskItem[]>([
     { id: "bd-1", title: "Review PR backend optimization", durationMinutes: 30, priority: "high", completed: false },
     { id: "bd-2", title: "Kirim update milestone ke klien", durationMinutes: 20, priority: "medium", completed: false },
@@ -49,37 +23,51 @@ export default function App() {
   ]);
 
   const [top3, setTop3] = useState<TaskItem[]>([
-    { id: "t3-1", title: "Fix memory leak di Tauri WebKit backend", durationMinutes: 60, priority: "urgent", completed: false, scheduledTime: "09:00", scheduledEndTime: "10:00" },
+    {
+      id: "t3-1",
+      title: "Fix memory leak di Tauri WebKit backend",
+      durationMinutes: 60,
+      priority: "urgent",
+      completed: false,
+      scheduledTime: "09:00",
+      scheduledEndTime: "10:00",
+    },
     { id: "t3-2", title: "Design Floating Bar Timebox Desk", durationMinutes: 30, priority: "high", completed: false },
   ]);
 
-  const now = new Date();
-  const currentRawHour = now.getHours();
-  const currentMinutes = Math.round(now.getMinutes() / 5) * 5 % 60;
-  const currentPeriodInit: "am" | "pm" = currentRawHour >= 12 ? "pm" : "am";
-  const currentHour12 = currentRawHour % 12 === 0 ? 12 : currentRawHour % 12;
-
+  // 2. Selection & Time Picker State
+  const initialTime = getCurrentTime12();
   const [selectedTop3Id, setSelectedTop3Id] = useState<string | null>("t3-2");
-  const [selectedHour, setSelectedHour] = useState<number>(currentHour12);
-  const [selectedMinute, setSelectedMinute] = useState<number>(currentMinutes);
-  const [selectedPeriod, setSelectedPeriod] = useState<"am" | "pm">(currentPeriodInit);
+  const [selectedHour, setSelectedHour] = useState<number>(initialTime.hour);
+  const [selectedMinute, setSelectedMinute] = useState<number>(initialTime.minute);
+  const [selectedPeriod, setSelectedPeriod] = useState<"am" | "pm">(initialTime.period);
   const [customDuration, setCustomDuration] = useState<number>(30);
 
-  // Micro-behavior Drag States
+  // 3. Drag and Drop Interaction State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
-  const [dragSource, setDragSource] = useState<"braindump" | "top3" | null>(null);
+  const [dragSource, setDragSource] = useState<DragSource>(null);
   const [isDragOverTop3, setIsDragOverTop3] = useState<boolean>(false);
   const [isDragOverBrainDump, setIsDragOverBrainDump] = useState<boolean>(false);
 
+  // 4. Prompt Input State
   const [inputValue, setInputValue] = useState("");
-  const inputDuration = 30;
-  const inputPriority: Priority = "medium";
-
-  const [activeTask, setActiveTask] = useState<TaskItem | null>(top3[0] || null);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(60 * 60);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [hardStopDialog, setHardStopDialog] = useState<TaskItem | null>(null);
 
+  // 5. Timer Hook
+  const {
+    activeTask,
+    setActiveTask,
+    secondsRemaining,
+    isRunning,
+    startFocusBox,
+    toggleTimer,
+    resetTimer,
+  } = useTimeboxTimer({
+    initialTask: top3[0] || null,
+    onTimeUp: (task) => setHardStopDialog(task),
+  });
+
+  // Sync Timer Drum saat kartu Top 3 dipilih
   useEffect(() => {
     const task = top3.find((t) => t.id === selectedTop3Id);
     if (task) {
@@ -91,12 +79,10 @@ export default function App() {
         setSelectedMinute(m);
         setSelectedPeriod(isPm ? "pm" : "am");
       } else {
-        const current = new Date();
-        const curH = current.getHours();
-        const curM = Math.round(current.getMinutes() / 5) * 5 % 60;
-        setSelectedHour(curH % 12 === 0 ? 12 : curH % 12);
-        setSelectedMinute(curM);
-        setSelectedPeriod(curH >= 12 ? "pm" : "am");
+        const cur = getCurrentTime12();
+        setSelectedHour(cur.hour);
+        setSelectedMinute(cur.minute);
+        setSelectedPeriod(cur.period);
       }
       setCustomDuration(task.durationMinutes);
     }
@@ -105,13 +91,12 @@ export default function App() {
   // Global Keyboard Shortcuts (Space = Play/Pause, Esc = Deselect)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Abaikan shortcut jika sedang mengetik di input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
       if (e.code === "Space") {
         e.preventDefault();
-        toggleTimer();
+        toggleTimer(top3[0] || null);
       } else if (e.code === "Escape") {
         setSelectedTop3Id(null);
       }
@@ -120,26 +105,14 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
-  useEffect(() => {
-    let interval: number | null = null;
-    if (isRunning && secondsRemaining > 0) {
-      interval = window.setInterval(() => setSecondsRemaining((prev) => prev - 1), 1000);
-    } else if (secondsRemaining === 0 && isRunning) {
-      setIsRunning(false);
-      if (activeTask) setHardStopDialog(activeTask);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, secondsRemaining, activeTask]);
-
+  // Task Actions
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
     let text = inputValue.trim();
-    let duration = inputDuration;
-    let priority: Priority = inputPriority;
+    let duration = 30;
+    let priority: Priority = "medium";
 
     const durationMatch = text.match(/\/(\d+)m?/i);
     if (durationMatch) {
@@ -165,7 +138,7 @@ export default function App() {
       id: "task-" + Date.now(),
       title: text || "Untitled Task",
       durationMinutes: duration,
-      priority: priority,
+      priority,
       completed: false,
     };
 
@@ -185,11 +158,35 @@ export default function App() {
 
   const demoteToBrainDump = (task: TaskItem) => {
     setTop3((prev) => prev.filter((t) => t.id !== task.id));
-    setBrainDump((prev) => [{ ...task, scheduledTime: undefined, scheduledEndTime: undefined }, ...prev]);
+    setBrainDump((prev) => [
+      { ...task, scheduledTime: undefined, scheduledEndTime: undefined },
+      ...prev,
+    ]);
     if (selectedTop3Id === task.id) setSelectedTop3Id(null);
   };
 
-  // Two-way Drag and Drop handlers
+  const applyTimeRange = (startTime: string, duration: number) => {
+    if (!selectedTop3Id) return;
+    const endTime = calculateEndTime(startTime, duration);
+
+    setTop3((prev) =>
+      prev.map((t) =>
+        t.id === selectedTop3Id
+          ? { ...t, scheduledTime: startTime, scheduledEndTime: endTime, durationMinutes: duration }
+          : t
+      )
+    );
+  };
+
+  const unassignSchedule = (taskId: string) => {
+    setTop3((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, scheduledTime: undefined, scheduledEndTime: undefined } : t
+      )
+    );
+  };
+
+  // Drag and Drop
   const handleDragStart = (task: TaskItem, source: "braindump" | "top3") => {
     setDraggedTaskId(task.id);
     setDragSource(source);
@@ -221,716 +218,110 @@ export default function App() {
     setDragSource(null);
   };
 
-  const applyTimeRange = (startTime: string, duration: number) => {
-    if (!selectedTop3Id) return;
-    const endTime = calculateEndTime(startTime, duration);
-
-    setTop3((prev) =>
-      prev.map((t) =>
-        t.id === selectedTop3Id
-          ? { ...t, scheduledTime: startTime, scheduledEndTime: endTime, durationMinutes: duration }
-          : t
-      )
-    );
-  };
-
-  const unassignSchedule = (taskId: string) => {
-    setTop3((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, scheduledTime: undefined, scheduledEndTime: undefined } : t
-      )
-    );
-  };
-
-  const startFocusBox = (task: TaskItem) => {
-    setActiveTask(task);
-    setSecondsRemaining(task.durationMinutes * 60);
-    setIsRunning(true);
-  };
-
-  const toggleTimer = () => {
-    if (!activeTask && top3.length > 0) {
-      startFocusBox(top3[0]);
-      return;
-    }
-    setIsRunning(!isRunning);
-  };
-
-  const resetTimer = () => {
-    setIsRunning(false);
-    if (activeTask) setSecondsRemaining(activeTask.durationMinutes * 60);
-  };
-
-  const formatTimer = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const renderPriorityBadge = (p: Priority) => {
-    switch (p) {
-      case "urgent":
-        return (
-          <Badge variant="urgent">
-            <span className="w-1 h-1 rounded-full bg-red-400" />
-            Urgent
-          </Badge>
-        );
-      case "high":
-        return (
-          <Badge variant="high">
-            <span className="w-1 h-1 rounded-full bg-orange-400" />
-            High
-          </Badge>
-        );
-      case "medium":
-        return (
-          <Badge variant="medium">
-            <span className="w-1 h-1 rounded-full bg-amber-400" />
-            Med
-          </Badge>
-        );
-      case "low":
-        return (
-          <Badge variant="low">
-            <span className="w-1 h-1 rounded-full bg-indigo-400" />
-            Low
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
   const selectedTask = top3.find((t) => t.id === selectedTop3Id);
-  
-  // Format 24h start time string dari 12h wheel picker
-  const hour24 = selectedPeriod === "pm" 
-    ? (selectedHour === 12 ? 12 : selectedHour + 12) 
-    : (selectedHour === 12 ? 0 : selectedHour);
-  const formattedStartTime = `${hour24.toString().padStart(2, "0")}:${selectedMinute.toString().padStart(2, "0")}`;
-  const calculatedEndTime = calculateEndTime(formattedStartTime, customDuration);
 
   return (
     <div className="flex h-screen w-screen bg-[#131415] text-[#F0F0F0] text-[13px] antialiased select-none overflow-hidden relative font-sans">
-      
-      {/* 1. Header Bar Minimalis Khas Plane */}
-      <header className="absolute top-0 left-0 right-0 h-10 border-b border-white/[0.08] bg-[#131415] z-20 flex items-center justify-between px-3.5">
-        <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 font-medium text-[#F0F0F0]">
-            <span className="w-2 h-2 rounded-full bg-[#3F76FF]" />
-            raditya-rayhan
-          </div>
-          <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
-          <span className="text-[#9EA3AE]">Timebox</span>
-        </div>
-
-        {/* Stopwatch Active Timer: SATU-SATUNYA TEMPAT FONT MONO DIIZINKAN */}
-        <div className="flex items-center gap-2.5">
-          {activeTask && (
-            <div className="flex items-center gap-2 bg-[#1C1D1F] border border-white/[0.08] px-2.5 py-1 rounded-[4px] text-xs">
-              <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-[#6B7280]"}`} />
-              <span className="font-mono font-medium text-[#F0F0F0] text-[12px]">{formatTimer(secondsRemaining)}</span>
-              <span className="text-[#9EA3AE] truncate max-w-[140px] font-sans text-[12px]">{activeTask.title}</span>
-              <button
-                onClick={toggleTimer}
-                title={isRunning ? "Pause (Space)" : "Play (Space)"}
-                className="ml-1 text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-              >
-                {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-              </button>
-              <button
-                onClick={resetTimer}
-                title="Reset Timer"
-                className="text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-          <div className="text-[11px] text-[#6B7280] font-sans">
-            {new Date().toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}
-          </div>
-        </div>
-      </header>
+      {/* 1. Header Bar */}
+      <Header
+        activeTask={activeTask}
+        isRunning={isRunning}
+        secondsRemaining={secondsRemaining}
+        onToggleTimer={() => toggleTimer(top3[0] || null)}
+        onResetTimer={resetTimer}
+      />
 
       {/* 2. Main 3-Column Working Board */}
       <main className="flex-1 flex pt-10 pb-0 w-full h-full overflow-hidden">
-        
-        {/* KOLOM 1: Brain Dump */}
-        <section
+        {/* Kolom 1: Brain Dump */}
+        <BrainDumpColumn
+          tasks={brainDump}
+          dragSource={dragSource}
+          draggedTaskId={draggedTaskId}
+          isDragOver={isDragOverBrainDump}
           onDragOver={(e) => {
             e.preventDefault();
             if (dragSource === "top3") setIsDragOverBrainDump(true);
           }}
           onDragLeave={() => setIsDragOverBrainDump(false)}
           onDrop={handleDropOnBrainDump}
-          className={`w-76 border-r border-white/[0.08] bg-[#161719] flex flex-col h-full flex-shrink-0 transition-all ${
-            isDragOverBrainDump ? "bg-[#201c1f]/40 border-r-[#F87171]/50" : ""
-          }`}
-        >
-          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#9EA3AE]" />
-              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Brain Dump</span>
-              <span className="text-[10px] font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
-                {brainDump.length}
-              </span>
-            </div>
-          </div>
+          onDragStart={handleDragStart}
+          onPromoteToTop3={promoteToTop3}
+        />
 
-          <div className="flex-1 overflow-y-auto p-2.5 pb-32 space-y-1.5 custom-scrollbar">
-            {brainDump.length === 0 ? (
-              <div className="p-6 text-center text-12 text-[#6B7280] font-sans">
-                Kosong
-              </div>
-            ) : (
-              brainDump.map((task) => {
-                const isDraggingThis = draggedTaskId === task.id;
-                return (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={() => handleDragStart(task, "braindump")}
-                    className={`group p-2.5 rounded-[6px] border border-white/[0.08] bg-[#1C1D1F] hover:bg-[#252629] hover:border-white/[0.14] transition-all cursor-grab active:cursor-grabbing flex flex-col gap-1.5 ${
-                      isDraggingThis ? "opacity-30 scale-95" : ""
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-1.5 min-w-0">
-                        <GripVertical className="w-3.5 h-3.5 text-[#6B7280] group-hover:text-[#9EA3AE] flex-shrink-0 mt-0.5" />
-                        <span className="text-13 font-sans text-[#F0F0F0] leading-snug line-clamp-2">
-                          {task.title}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => promoteToTop3(task)}
-                        title="Pindahkan ke Top 3"
-                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-medium font-sans text-[#3F76FF] hover:text-[#5B8CFF] bg-[#3F76FF]/10 px-1.5 py-0.5 rounded-[3px] transition cursor-pointer flex-shrink-0"
-                      >
-                        Top 3 <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between pl-5 text-11 text-[#9EA3AE] font-sans">
-                      <span className="flex items-center gap-1 font-sans text-[11px]">
-                        <Clock className="w-3 h-3 text-[#6B7280]" />
-                        {task.durationMinutes}m
-                      </span>
-                      {renderPriorityBadge(task.priority)}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* KOLOM 2: Top 3 Priorities Gate */}
-        <section
+        {/* Kolom 2: Top 3 Priorities */}
+        <Top3Column
+          top3={top3}
+          selectedTop3Id={selectedTop3Id}
+          activeTask={activeTask}
+          isRunning={isRunning}
+          draggedTaskId={draggedTaskId}
+          dragSource={dragSource}
+          isDragOver={isDragOverTop3}
           onDragOver={(e) => {
             e.preventDefault();
             if (dragSource === "braindump") setIsDragOverTop3(true);
           }}
           onDragLeave={() => setIsDragOverTop3(false)}
           onDrop={handleDropOnTop3}
-          className={`w-80 border-r border-white/[0.08] bg-[#18191B] flex flex-col h-full flex-shrink-0 transition-all ${
-            isDragOverTop3 ? "bg-[#1E2333]/40 border-l border-l-[#3F76FF]" : ""
-          }`}
-        >
-          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Top 3 Priorities</span>
-              <span className="text-[10px] font-sans text-[#9EA3AE] bg-[#1C1D1F] px-1.5 py-0.2 rounded border border-white/[0.08]">
-                {top3.length}/3
-              </span>
-            </div>
-          </div>
+          onDragStart={handleDragStart}
+          onSelectTask={(id) => setSelectedTop3Id(id)}
+          onDemoteTask={demoteToBrainDump}
+          onStartFocus={startFocusBox}
+          onToggleComplete={(id) =>
+            setTop3((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+            )
+          }
+        />
 
-          <div className="flex-1 overflow-y-auto p-3 pb-32 space-y-2.5 custom-scrollbar">
-            {[0, 1, 2].map((index) => {
-              const task = top3[index];
-              const isSelected = task && selectedTop3Id === task.id;
-              const isTaskRunning = task && activeTask?.id === task.id && isRunning;
-              const isDraggingThis = task && draggedTaskId === task.id;
-
-              return (
-                <div
-                  key={index}
-                  draggable={!!task}
-                  onDragStart={() => task && handleDragStart(task, "top3")}
-                  onClick={() => {
-                    if (task) setSelectedTop3Id(task.id);
-                  }}
-                  className={`min-h-[110px] rounded-[6px] transition-all p-3 flex flex-col justify-between cursor-pointer ${
-                    task
-                      ? isDraggingThis
-                        ? "opacity-30 scale-95"
-                        : task.completed
-                        ? "bg-[#1C1D1F]/50 border border-white/[0.04] opacity-50"
-                        : isTaskRunning
-                        ? "border border-white/[0.1] border-l-2 border-l-[#3F76FF] bg-[#1C1D1F] ring-1 ring-[#3F76FF]/20"
-                        : isSelected
-                        ? "bg-[#212327] border border-white/[0.14] border-l-2 border-l-[#3F76FF]"
-                        : "bg-[#1C1D1F] border border-white/[0.08] hover:bg-[#252629] hover:border-white/[0.12]"
-                      : "border border-dashed border-white/[0.08] bg-[#151617]/50 flex items-center justify-center hover:border-white/[0.14]"
-                  }`}
-                >
-                  {task ? (
-                    <>
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <span className="text-[10px] font-sans text-amber-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-                            <GripVertical className="w-3 h-3 text-[#6B7280] cursor-grab" />
-                            #{index + 1}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              demoteToBrainDump(task);
-                            }}
-                            className="text-[#6B7280] hover:text-[#F0F0F0] transition cursor-pointer p-0.5"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <div className={`text-13 font-sans font-medium leading-snug ${task.completed ? "line-through text-[#6B7280]" : "text-[#F0F0F0]"}`}>
-                          {task.title}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-11">
-                        <div className="flex items-center gap-1.5 font-sans text-[#9EA3AE]">
-                          <Clock className="w-3 h-3 text-[#6B7280]" />
-                          <span>{task.durationMinutes}m</span>
-                          {task.scheduledTime ? (
-                            <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-[3px] flex items-center gap-1 text-[10px] font-sans">
-                              <CalendarCheck2 className="w-3 h-3" />
-                              {task.scheduledTime} - {task.scheduledEndTime || calculateEndTime(task.scheduledTime, task.durationMinutes)}
-                            </span>
-                          ) : (
-                            <span className="text-[#6B7280] bg-white/[0.04] px-1.5 py-0.2 rounded-[3px] text-[10px] font-sans">
-                              Set Jam
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          {!task.completed && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                startFocusBox(task);
-                              }}
-                              className={`px-2 py-0.5 rounded-[4px] text-11 font-medium font-sans transition cursor-pointer ${
-                                isTaskRunning
-                                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                                  : "bg-white/[0.06] hover:bg-white/[0.12] text-[#F0F0F0]"
-                              }`}
-                            >
-                              {isTaskRunning ? "Running" : "Start"}
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTop3((prev) =>
-                                prev.map((t) =>
-                                  t.id === task.id ? { ...t, completed: !t.completed } : t
-                                )
-                              );
-                            }}
-                            className="text-[#6B7280] hover:text-emerald-400 transition cursor-pointer"
-                          >
-                            <CheckCircle2
-                              className={`w-4 h-4 ${task.completed ? "text-emerald-400 fill-emerald-500/20" : ""}`}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center text-11 text-[#6B7280] font-sans py-4">
-                      Slot #{index + 1}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* KOLOM 3: Time Range Picker */}
-        <section className="flex-1 bg-[#131415] flex flex-col h-full overflow-hidden transition-all">
-          <div className="p-3 border-b border-white/[0.08] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-[#9EA3AE]" />
-              <span className="font-medium text-[#F0F0F0] text-12 font-sans">Time Range</span>
-              {selectedTask && (
-                <div className="flex items-center gap-1.5 text-12 text-[#F0F0F0] bg-[#1C1D1F] px-2 py-0.5 rounded-[4px] border border-white/[0.08] font-sans">
-                  <span className="text-[#3F76FF] font-medium truncate max-w-[180px]">
-                    {selectedTask.title}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {selectedTask?.scheduledTime && (
-              <button
-                onClick={() => unassignSchedule(selectedTask.id)}
-                className="text-11 text-red-400 hover:text-red-300 font-sans cursor-pointer transition flex items-center gap-1"
-              >
-                <X className="w-3 h-3" /> Hapus Jam
-              </button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-32">
-            {!selectedTask ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto text-[#6B7280]">
-                <Clock className="w-7 h-7 mb-2 text-[#525866]" />
-                <div className="text-12 font-medium text-[#F0F0F0] font-sans">Pilih Kartu Top 3</div>
-                <div className="text-11 text-[#6B7280] font-sans mt-1">Klik salah satu tugas di Top 3 untuk mengatur alokasi waktu fokus</div>
-              </div>
-            ) : (
-              <div className="max-w-[340px] mx-auto space-y-3">
-                {/* 1. Card Timer Picker & Duration */}
-                <Card className="p-4 shadow-xl flex flex-col items-center border-white/[0.08] bg-[#1C1D1F] rounded-[14px]">
-                  
-                  {/* Header Time Card dengan tombol Set Jam Sekarang */}
-                  <div className="w-full flex items-center justify-between mb-3 pb-2 border-b border-white/[0.06]">
-                    <span className="text-13 font-medium text-[#F0F0F0] font-sans">
-                      Mulai Dari
-                    </span>
-                    <button
-                      onClick={() => {
-                        const cur = new Date();
-                        const curH = cur.getHours();
-                        const curM = Math.round(cur.getMinutes() / 5) * 5 % 60;
-                        setSelectedHour(curH % 12 === 0 ? 12 : curH % 12);
-                        setSelectedMinute(curM);
-                        setSelectedPeriod(curH >= 12 ? "pm" : "am");
-                      }}
-                      className="text-[11px] text-[#3F76FF] hover:text-[#5B8CFF] font-sans transition cursor-pointer flex items-center gap-1"
-                    >
-                      <Clock className="w-3 h-3" /> Jam Sekarang
-                    </button>
-                  </div>
-
-                  {/* Vertical Time Drum / Wheel Simulator */}
-                  <div className="relative w-full flex flex-col items-center justify-center py-1 select-none">
-                    {/* Faded Row Atas (Preview -1) */}
-                    <div className="flex items-center justify-center gap-6 text-[#525866] text-11 font-sans py-0.5 opacity-40">
-                      <span className="w-8 text-center">{selectedHour === 1 ? 12 : selectedHour - 1}</span>
-                      <span className="text-[#525866]">:</span>
-                      <span className="w-8 text-center">{selectedMinute === 0 ? "45" : (selectedMinute - 15).toString().padStart(2, "0")}</span>
-                      <span className="w-8 text-center">{selectedPeriod === "am" ? "pm" : "am"}</span>
-                    </div>
-
-                    {/* Active Selected Row (Tengah dengan Highlight Capsule Lembut) */}
-                    <div className="flex items-center justify-center gap-4 bg-white/[0.06] border border-white/[0.08] rounded-[10px] py-1.5 px-6 my-1 w-full shadow-inner">
-                      {/* Hour Select Button/Scroll */}
-                      <button
-                        onClick={() => setSelectedHour((prev) => (prev % 12) + 1)}
-                        className="w-10 text-center text-18 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
-                        title="Klik untuk ubah jam"
-                      >
-                        {selectedHour}
-                      </button>
-
-                      <span className="text-16 font-bold text-[#9EA3AE]">:</span>
-
-                      {/* Minute Select Button/Scroll */}
-                      <button
-                        onClick={() => setSelectedMinute((prev) => (prev + 5) % 60)}
-                        className="w-10 text-center text-18 font-semibold text-[#F0F0F0] font-sans hover:text-[#3F76FF] transition cursor-pointer"
-                        title="Klik untuk ubah menit (+5m)"
-                      >
-                        {selectedMinute.toString().padStart(2, "0")}
-                      </button>
-
-                      {/* AM / PM Toggle */}
-                      <button
-                        onClick={() => setSelectedPeriod((prev) => (prev === "am" ? "pm" : "am"))}
-                        className="w-10 text-center text-14 font-medium text-[#9EA3AE] hover:text-[#3F76FF] uppercase transition cursor-pointer"
-                        title="Klik untuk ganti AM / PM"
-                      >
-                        {selectedPeriod}
-                      </button>
-                    </div>
-
-                    {/* Faded Row Bawah (Preview +1) */}
-                    <div className="flex items-center justify-center gap-6 text-[#525866] text-11 font-sans py-0.5 opacity-40">
-                      <span className="w-8 text-center">{selectedHour === 12 ? 1 : selectedHour + 1}</span>
-                      <span className="text-[#525866]">:</span>
-                      <span className="w-8 text-center">{(selectedMinute + 15) % 60 === 0 ? "00" : ((selectedMinute + 15) % 60).toString().padStart(2, "0")}</span>
-                      <span className="w-8 text-center">{selectedPeriod}</span>
-                    </div>
-                  </div>
-
-                  {/* Presets Jam Cepat */}
-                  <div className="w-full mt-2 pt-2 border-t border-white/[0.04]">
-                    <div className="text-[10px] text-[#6B7280] font-sans mb-1 text-left">Shortcut Jam:</div>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {[
-                        { h: 9, m: 0, p: "am", label: "9 am" },
-                        { h: 12, m: 0, p: "pm", label: "12 pm" },
-                        { h: 4, m: 0, p: "pm", label: "4 pm" },
-                        { h: 7, m: 0, p: "pm", label: "7 pm" },
-                      ].map((item) => {
-                        const isActivePreset =
-                          selectedHour === item.h &&
-                          selectedMinute === item.m &&
-                          selectedPeriod === item.p;
-
-                        return (
-                          <button
-                            key={item.label}
-                            onClick={() => {
-                              setSelectedHour(item.h);
-                              setSelectedMinute(item.m);
-                              setSelectedPeriod(item.p as "am" | "pm");
-                            }}
-                            className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
-                              isActivePreset
-                                ? "bg-white/[0.08] border-[#3F76FF] text-[#3F76FF] font-medium"
-                                : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] hover:bg-white/[0.04]"
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Pilihan & Tambah Durasi Pengerjaan */}
-                  <div className="w-full mt-2.5 pt-2.5 border-t border-white/[0.04]">
-                    <div className="flex items-center justify-between text-[11px] font-sans mb-1.5">
-                      <span className="text-[#9EA3AE]">Mau fokus berapa lama:</span>
-                      <span className="text-emerald-400 font-medium">{customDuration} menit</span>
-                    </div>
-                    
-                    {/* Preset Durasi Langsung */}
-                    <div className="grid grid-cols-5 gap-1 mb-2">
-                      {[15, 25, 30, 45, 60].map((mins) => (
-                        <button
-                          key={mins}
-                          onClick={() => setCustomDuration(mins)}
-                          className={`h-7 rounded-[4px] border text-11 font-sans transition cursor-pointer flex items-center justify-center ${
-                            customDuration === mins
-                              ? "bg-[#3F76FF] text-white font-medium border-[#3F76FF]"
-                              : "bg-[#161719] border-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0]"
-                          }`}
-                        >
-                          {mins}m
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Quick Add Time Buttons */}
-                    <div className="flex items-center justify-between gap-1.5 pt-1 text-[11px] text-[#6B7280]">
-                      <span className="text-[10px]">Tambah durasi:</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setCustomDuration((prev) => prev + 5)}
-                          className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                        >
-                          +5m
-                        </button>
-                        <button
-                          onClick={() => setCustomDuration((prev) => prev + 15)}
-                          className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                        >
-                          +15m
-                        </button>
-                        <button
-                          onClick={() => setCustomDuration((prev) => Math.max(5, prev - 10))}
-                          className="px-2 py-0.5 rounded-[4px] bg-[#161719] border border-white/[0.06] hover:bg-white/[0.06] text-[#9EA3AE] hover:text-[#F0F0F0] transition cursor-pointer"
-                        >
-                          -10m
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tombol Simpan Jadwal */}
-                  <div className="w-full mt-3">
-                    <Button
-                      onClick={() => applyTimeRange(formattedStartTime, customDuration)}
-                      className="w-full h-9 rounded-[6px] bg-[#3F76FF] hover:bg-[#3364DB] active:scale-[0.98] text-white font-medium text-12 shadow-md transition"
-                    >
-                      Kunci Jadwal ({formattedStartTime} - {calculatedEndTime})
-                    </Button>
-                  </div>
-
-                </Card>
-
-                {/* 2. Live Countdown Focus Card */}
-                <Card className="p-4 shadow-xl border border-white/[0.08] bg-[#1C1D1F] rounded-[14px]">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5 text-12 font-medium text-[#F0F0F0] font-sans">
-                      <Timer className="w-3.5 h-3.5 text-[#3F76FF]" />
-                      <span>Focus Countdown</span>
-                    </div>
-                    {activeTask?.id === selectedTask.id && (
-                      <span className={`w-2 h-2 rounded-full ${isRunning ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-                    )}
-                  </div>
-
-                  {/* Angka Countdown Besar (Sesuai design.md: font-mono) */}
-                  <div className="flex flex-col items-center justify-center py-3 bg-[#131415]/70 rounded-[10px] border border-white/[0.06]">
-                    <div className="font-mono text-32 font-bold tracking-wider text-[#F0F0F0]">
-                      {activeTask?.id === selectedTask.id
-                        ? formatTimer(secondsRemaining)
-                        : formatTimer(customDuration * 60)}
-                    </div>
-                    <div className="text-11 text-[#6B7280] font-sans mt-0.5 truncate max-w-[240px]">
-                      {activeTask?.id === selectedTask.id
-                        ? (isRunning ? "Sedang berjalan..." : "Timer dijeda")
-                        : `Target alokasi: ${customDuration} menit`}
-                    </div>
-                  </div>
-
-                  {/* Action Controls: Mulai / Pause / Reset */}
-                  <div className="flex items-center gap-2 mt-3">
-                    {activeTask?.id === selectedTask.id ? (
-                      <>
-                        <Button
-                          onClick={toggleTimer}
-                          className={`flex-1 h-9 rounded-[6px] font-medium text-12 transition ${
-                            isRunning
-                              ? "bg-amber-500 hover:bg-amber-600 text-black"
-                              : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                          }`}
-                        >
-                          {isRunning ? (
-                            <span className="flex items-center gap-1.5">
-                              <Pause className="w-3.5 h-3.5" /> Jeda Fokus
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5">
-                              <Play className="w-3.5 h-3.5" /> Lanjutkan
-                            </span>
-                          )}
-                        </Button>
-                        <button
-                          onClick={resetTimer}
-                          title="Reset Timer"
-                          className="h-9 px-3 rounded-[6px] bg-white/[0.04] hover:bg-white/[0.08] text-[#9EA3AE] hover:text-[#F0F0F0] border border-white/[0.06] transition cursor-pointer flex items-center justify-center"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          applyTimeRange(formattedStartTime, customDuration);
-                          startFocusBox({
-                            ...selectedTask,
-                            durationMinutes: customDuration,
-                            scheduledTime: formattedStartTime,
-                            scheduledEndTime: calculatedEndTime
-                          });
-                        }}
-                        className="w-full h-9 rounded-[6px] bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-medium text-12 shadow transition flex items-center justify-center gap-1.5"
-                      >
-                        <Play className="w-3.5 h-3.5" /> Mulai Fokus Sekarang
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              </div>
-            )}
-          </div>
-        </section>
-
+        {/* Kolom 3: Time Range & Live Focus */}
+        <TimeRangeColumn
+          selectedTask={selectedTask}
+          activeTask={activeTask}
+          isRunning={isRunning}
+          secondsRemaining={secondsRemaining}
+          selectedHour={selectedHour}
+          selectedMinute={selectedMinute}
+          selectedPeriod={selectedPeriod}
+          customDuration={customDuration}
+          onSetHour={setSelectedHour}
+          onSetMinute={setSelectedMinute}
+          onSetPeriod={setSelectedPeriod}
+          onSetDuration={setCustomDuration}
+          onApplyTimeRange={applyTimeRange}
+          onUnassignSchedule={unassignSchedule}
+          onToggleTimer={() => toggleTimer(top3[0] || null)}
+          onResetTimer={resetTimer}
+          onStartFocus={startFocusBox}
+        />
       </main>
- 
-      {/* 3. Floating Prompt Box (Berdiri Sendiri, Tinggi, & Elegan Tanpa Container Strip Gelap) */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-4 pointer-events-none">
-        <form
-          onSubmit={handleInputSubmit}
-          className="pointer-events-auto bg-[#1C1D1F]/90 backdrop-blur-xl border border-white/[0.14] rounded-[12px] shadow-2xl p-3 flex flex-col justify-between min-h-[105px] focus-within:border-[#3F76FF] focus-within:ring-1 focus-within:ring-[#3F76FF]/30 transition-all"
-        >
-          {/* Textarea Multi-line atau Text Input yang Lega */}
-          <textarea
-            value={inputValue}
-            rows={2}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleInputSubmit(e);
-              }
-            }}
-            placeholder="Tulis tugas baru untuk Brain Dump... ketik /30m untuk durasi atau @urgent"
-            className="w-full bg-transparent border-none text-13 text-[#F0F0F0] placeholder:text-[#6B7280] focus:outline-none resize-none font-sans leading-relaxed"
-          />
 
-          {/* Bottom Toolbar Box (Mirip Gambar 2) */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-[11px] font-sans text-[#9EA3AE] bg-white/[0.04] hover:bg-white/[0.08] px-2 py-1 rounded-[4px] border border-white/[0.06] transition cursor-pointer">
-                <Clock className="w-3 h-3 text-[#6B7280]" />
-                30m default
-              </span>
-              <span className="text-[10px] text-[#6B7280] font-sans">
-                Enter kirim
-              </span>
-            </div>
+      {/* 3. Floating Prompt Bar */}
+      <FloatingPromptBar
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+        onSubmit={handleInputSubmit}
+      />
 
-            <button
-              type="submit"
-              disabled={!inputValue.trim()}
-              className="w-7 h-7 rounded-full bg-[#3F76FF] hover:bg-[#3364DB] active:scale-95 disabled:opacity-20 disabled:hover:bg-[#3F76FF] text-white flex items-center justify-center transition cursor-pointer shadow-md"
-            >
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* 4. Hard Stop Evaluation Modal */}
+      {/* 4. Hard Stop Dialog */}
       {hardStopDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C1D1F] border border-white/[0.12] w-full max-w-md rounded-[6px] p-5 shadow-2xl">
-            <div className="flex items-center gap-2 text-amber-400 mb-2">
-              <AlertCircle className="w-4 h-4" />
-              <h3 className="font-semibold text-13 text-[#F0F0F0] font-sans">Timebox Selesai</h3>
-            </div>
-            <p className="text-12 text-[#9EA3AE] mb-4 font-sans leading-relaxed">
-              Waktu alokasi untuk <strong className="text-[#F0F0F0]">"{hardStopDialog.title}"</strong> habis.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 text-11 font-sans">
-              <button
-                onClick={() => {
-                  demoteToBrainDump(hardStopDialog);
-                  setHardStopDialog(null);
-                  setActiveTask(null);
-                }}
-                className="px-3 py-1.5 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] active:scale-95 text-[#F0F0F0] transition cursor-pointer"
-              >
-                Jadwalkan Ulang
-              </button>
-              <button
-                onClick={() => {
-                  setTop3((prev) =>
-                    prev.map((t) => (t.id === hardStopDialog.id ? { ...t, completed: true } : t))
-                  );
-                  setHardStopDialog(null);
-                  setActiveTask(null);
-                }}
-                className="px-3 py-1.5 rounded-[4px] bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-medium transition cursor-pointer"
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
+        <HardStopDialog
+          task={hardStopDialog}
+          onReschedule={(task) => {
+            demoteToBrainDump(task);
+            setHardStopDialog(null);
+            setActiveTask(null);
+          }}
+          onComplete={(task) => {
+            setTop3((prev) =>
+              prev.map((t) => (t.id === task.id ? { ...t, completed: true } : t))
+            );
+            setHardStopDialog(null);
+            setActiveTask(null);
+          }}
+        />
       )}
-
     </div>
   );
 }
