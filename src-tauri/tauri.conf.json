@@ -1,20 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "Timebox Ray",
   "version": "0.1.0",
-  "identifier": "com.rayhan.tauri-app",
+  "identifier": "com.rayhan.timebox-ray",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://127.0.0.1:3000",
     "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "frontendDist": "../apps/web/build/client"
   },
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "Timebox Ray",
+        "width": 1280,
+        "height": 800
       }
     ],
     "security": {

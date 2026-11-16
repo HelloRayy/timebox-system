@@ -1,0 +1,1 @@
+import{t as e}from"./anchor-button-BxpLK6w8.js";import{a as t}from"./dist-sUI7Kkp_.js";import{t as n}from"./jsx-runtime-lTuChwRC.js";var r=n();function i({href:n}){let{t:i}=t();return(0,r.jsx)(`span`,{className:`ms-1 inline-flex align-middle`,children:(0,r.jsx)(e,{variant:`secondary`,size:`xs`,href:n,external:!0,label:i(`docs`)})})}export{i as t};

@@ -1,0 +1,1 @@
+import{L as e,j as t}from"./CompositeRootContext-BwWbCFEJ.js";function n(e){return t(19)?e:e?`true`:void 0}var r=e(`border border-subtle bg-layer-2`,{variants:{elevation:{raised:`shadow-overlay-100`,overlay:`shadow-overlay-200`},radius:{md:`rounded-md`,lg:`rounded-lg`}}});function i(e){return r(e)}export{n,i as t};

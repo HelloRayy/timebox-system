@@ -1,0 +1,1 @@
+import{b as e}from"./dialog-main-D22uLHUh.js";import{i as t}from"./popover-trigger-DaRkMojF.js";import{t as n}from"./jsx-runtime-lTuChwRC.js";import{I as r,T as i}from"./CompositeRootContext-BwWbCFEJ.js";var a=n();function o({render:n,children:o,...s}){return i({defaultTagName:`div`,render:n,props:r({className:t()},s,{children:(0,a.jsx)(e,{children:o})})})}export{o as t};

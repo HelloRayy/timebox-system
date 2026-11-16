@@ -1,0 +1,1 @@
+import{r as e}from"./variants-B5m2r-ta.js";import{I as t,T as n}from"./CompositeRootContext-BwWbCFEJ.js";function r({size:r,render:i,...a}){return n({defaultTagName:`div`,render:i,props:t({className:e({size:r})},a)})}export{r as t};

@@ -1,0 +1,1 @@
+import{n as e}from"./input-group-Cty50dbI.js";import{t}from"./jsx-runtime-lTuChwRC.js";import{t as n}from"./Input-BBpbee9v.js";var r=t();function i({size:t,...i}){return(0,r.jsx)(n,{...i,render:(0,r.jsx)(e,{size:t})})}export{i as t};

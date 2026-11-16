@@ -1,0 +1,1 @@
+function e({external:e,target:t,rel:n}){return{target:t??(e?`_blank`:void 0),rel:n??(e?`noreferrer noopener`:void 0)}}export{e as t};

@@ -1,0 +1,1 @@
+import{C as e}from"./menu-item-DZEVvsce.js";import{I as t,T as n}from"./CompositeRootContext-BwWbCFEJ.js";import{t as r}from"./Separator-BX09NhF9.js";import{t as i}from"./jsx-runtime-lTuChwRC.js";function a({render:r,...i}){return n({defaultTagName:`div`,render:r,props:t({className:e()},i)})}var o=i();function s(e){return(0,o.jsx)(r,{...e,render:(0,o.jsx)(a,{})})}export{s as t};

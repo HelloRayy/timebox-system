@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-lTuChwRC.js";import{R as t}from"./CompositeRootContext-BwWbCFEJ.js";var n=e(),r=t(`inline-flex shrink-0 items-center justify-center`,`[&>img]:size-(--node-size) [&>svg]:size-(--node-size)`);function i(e){return(0,n.jsx)(`span`,{className:r,...e})}export{r as n,i as t};

@@ -1,0 +1,1 @@
+import{t as e}from"./badge-Dvw6TOfw.js";import{h as t}from"./dist-VxjrFYkn.js";import{t as n}from"./jsx-runtime-lTuChwRC.js";var r=n();function i(n){let{count:i,className:a=``}=n;return(0,r.jsx)(`span`,{className:t(`inline-flex flex-shrink-0 items-center`,a),children:(0,r.jsx)(e,{variant:`brand`,size:`xs`,label:String(i)})})}export{i as t};

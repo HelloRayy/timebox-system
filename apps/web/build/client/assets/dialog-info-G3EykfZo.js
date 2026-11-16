@@ -1,0 +1,1 @@
+import{g as e}from"./dialog-main-D22uLHUh.js";import{I as t,T as n}from"./CompositeRootContext-BwWbCFEJ.js";function r({render:r,...i}){return n({defaultTagName:`div`,render:r,props:t({className:e()},i)})}export{r as t};

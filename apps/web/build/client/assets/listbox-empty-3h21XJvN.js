@@ -1,0 +1,1 @@
+import{L as e}from"./CompositeRootContext-BwWbCFEJ.js";var t=`text-body-xs-regular text-tertiary not-empty:px-2 not-empty:py-1.5`;e(t);export{t};

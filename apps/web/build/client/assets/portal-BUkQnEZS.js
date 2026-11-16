@@ -1,0 +1,1 @@
+import{I as e,L as t,T as n}from"./CompositeRootContext-BwWbCFEJ.js";var r=t(`[&>[data-base-ui-inert]]:z-50`);function i({render:t,...i}){return n({defaultTagName:`div`,render:t,props:e({className:r()},i)})}export{i as t};

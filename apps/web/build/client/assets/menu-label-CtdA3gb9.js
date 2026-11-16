@@ -1,0 +1,1 @@
+import{I as e,T as t}from"./CompositeRootContext-BwWbCFEJ.js";import{f as n,p as r}from"./menu-item-DkCv8F8s.js";function i({render:r,...i}){return t({defaultTagName:`span`,render:r,props:e({className:n()},i)})}function a({render:n,...i}){return t({defaultTagName:`div`,render:n,props:e({className:r()},i)})}export{i as n,a as t};

@@ -1,0 +1,1 @@
+import{R as e}from"./CompositeRootContext-BwWbCFEJ.js";var t=e(`min-w-0 bg-transparent text-primary outline-none`,`caret-(--border-color-accent-strong)`,`placeholder:text-placeholder`,`disabled:cursor-not-allowed disabled:text-disabled`);export{t};
