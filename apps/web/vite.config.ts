@@ -33,6 +33,16 @@ export default defineConfig(() => ({
   },
   server: {
     host: "127.0.0.1",
+    proxy: {
+      "/plane-cloud": {
+        target: "https://api.plane.so",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/plane-cloud/, "/api/v1"),
+        headers: {
+          "X-API-Key": process.env.VITE_PLANE_PAT || "",
+        },
+      },
+    },
   },
   // No SSR-specific overrides needed; alias resolves to ESM build
 }));
