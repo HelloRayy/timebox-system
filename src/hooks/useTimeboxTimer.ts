@@ -1,40 +1,51 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TaskItem } from "@/types/task";
 
 export interface UseTimeboxTimerProps {
-  initialTask?: TaskItem | null;
   onTimeUp?: (task: TaskItem) => void;
 }
 
-export const useTimeboxTimer = ({ initialTask = null, onTimeUp }: UseTimeboxTimerProps = {}) => {
-  const [activeTask, setActiveTask] = useState<TaskItem | null>(initialTask);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(
-    initialTask ? initialTask.durationMinutes * 60 : 30 * 60
-  );
+export const useTimeboxTimer = ({ onTimeUp }: UseTimeboxTimerProps = {}) => {
+  const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
+  const [totalSeconds, setTotalSeconds] = useState<number>(25 * 60);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(25 * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
 
-  const startFocusBox = (task: TaskItem) => {
+  const startFocusBox = useCallback((task: TaskItem, autoStart = true) => {
+    const secs = (task.durationMinutes || 25) * 60;
     setActiveTask(task);
-    setSecondsRemaining(task.durationMinutes * 60);
-    setIsRunning(true);
-  };
+    setTotalSeconds(secs);
+    setSecondsRemaining(secs);
+    setIsRunning(autoStart);
+    setIsPopupVisible(true);
+  }, []);
 
-  const toggleTimer = (fallbackTask?: TaskItem | null) => {
-    if (!activeTask) {
-      if (fallbackTask) {
-        startFocusBox(fallbackTask);
-      }
-      return;
-    }
-    setIsRunning((prev) => !prev);
-  };
-
-  const resetTimer = () => {
+  const loadTaskIntoPopup = useCallback((task: TaskItem) => {
+    const secs = (task.durationMinutes || 25) * 60;
+    setActiveTask(task);
+    setTotalSeconds(secs);
+    setSecondsRemaining(secs);
     setIsRunning(false);
-    if (activeTask) {
-      setSecondsRemaining(activeTask.durationMinutes * 60);
-    }
-  };
+    setIsPopupVisible(true);
+  }, []);
+
+  const toggleTimer = useCallback(() => {
+    if (!activeTask) return;
+    setIsRunning((prev) => !prev);
+  }, [activeTask]);
+
+  const resetTimer = useCallback(() => {
+    setIsRunning(false);
+    const secs = (activeTask?.durationMinutes || 25) * 60;
+    setTotalSeconds(secs);
+    setSecondsRemaining(secs);
+  }, [activeTask]);
+
+  const adjustMinutes = useCallback((deltaMinutes: number) => {
+    setTotalSeconds((prev) => Math.max(5 * 60, prev + deltaMinutes * 60));
+    setSecondsRemaining((prev) => Math.max(60, prev + deltaMinutes * 60));
+  }, []);
 
   useEffect(() => {
     let interval: number | null = null;
@@ -57,12 +68,15 @@ export const useTimeboxTimer = ({ initialTask = null, onTimeUp }: UseTimeboxTime
   return {
     activeTask,
     setActiveTask,
+    totalSeconds,
     secondsRemaining,
-    setSecondsRemaining,
     isRunning,
-    setIsRunning,
+    isPopupVisible,
+    setIsPopupVisible,
     startFocusBox,
+    loadTaskIntoPopup,
     toggleTimer,
     resetTimer,
+    adjustMinutes,
   };
 };
