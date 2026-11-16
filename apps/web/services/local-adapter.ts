@@ -307,13 +307,33 @@ export const localOfflineAdapter: AxiosAdapter = async (config) => {
     });
   }
 
-  // 2. Current User & Settings
+  // 2. Current User, Profile & Settings
   if (path === "/api/users/me/" || path === "/api/users/me") {
     if (method === "patch") {
       db.user = { ...db.user, ...body };
       saveDB(db);
     }
     return makeResponse(config, db.user);
+  }
+  if (path === "/api/users/me/profile/" || path === "/api/users/me/profile") {
+    if (method === "patch") {
+      db.user = { ...db.user, ...body, is_onboarded: true };
+      saveDB(db);
+    }
+    return makeResponse(config, {
+      ...db.user,
+      is_onboarded: true,
+      last_workspace_id: "ws-1",
+      onboarding_step: {
+        workspace_join: true,
+        profile_complete: true,
+        workspace_create: true,
+        workspace_invite: true,
+      },
+    });
+  }
+  if (path === "/api/users/me/accounts/" || path === "/api/users/me/accounts") {
+    return makeResponse(config, []);
   }
   if (path === "/api/users/me/settings/" || path === "/api/users/me/settings") {
     return makeResponse(config, db.userSettings);
