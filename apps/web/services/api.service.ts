@@ -6,8 +6,14 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
-import { create } from "axios";
+import axios, { create } from "axios";
 import { normalizeAPIRequestURL } from "@plane/services";
+import { localOfflineAdapter } from "./local-adapter";
+
+const isOffline = import.meta.env.VITE_OFFLINE_MODE === "true";
+if (isOffline) {
+  axios.defaults.adapter = localOfflineAdapter;
+}
 
 export abstract class APIService {
   protected baseURL: string;
@@ -18,6 +24,7 @@ export abstract class APIService {
     this.axiosInstance = create({
       baseURL,
       withCredentials: true,
+      ...(isOffline ? { adapter: localOfflineAdapter } : {}),
     });
 
     this.setupInterceptors();
